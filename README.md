@@ -4,13 +4,6 @@
 
 <h1 align="center">- 蓝奏云API -</h1>
 
-<p align="center">
-<img src="https://img.shields.io/github/v/release/zaxtyson/LanZouCloud-API.svg?logo=iCloud">
-<img src="https://img.shields.io/badge/support-Windows-blue?logo=Windows">
-<img src="https://img.shields.io/badge/support-Linux-yellow?logo=Linux">
-<img src="https://github.com/zaxtyson/LanZouCloud-API/workflows/Publish%20to%20PyPI/badge.svg">
-</p>
-
 # 简介
 
 - 本库封装了蓝奏网盘的基础功能: 登录、注销、获取文件(夹)列表、下载文件、上传文件、删除文件(夹)、
