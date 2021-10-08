@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31515.178
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LanZouCloud", "LanZouCloud\LanZouCloud.csproj", "{145D02EF-8247-494F-A50F-4DF36E737BD5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanZouCloud", "LanZouCloud\LanZouCloud.csproj", "{145D02EF-8247-494F-A50F-4DF36E737BD5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{5FAD12DE-CCA7-4A05-8455-328DE633D90B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{5FAD12DE-CCA7-4A05-8455-328DE633D90B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{AC188032-15B6-4136-B040-67B2536722F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5FAD12DE-CCA7-4A05-8455-328DE633D90B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5FAD12DE-CCA7-4A05-8455-328DE633D90B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5FAD12DE-CCA7-4A05-8455-328DE633D90B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC188032-15B6-4136-B040-67B2536722F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC188032-15B6-4136-B040-67B2536722F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC188032-15B6-4136-B040-67B2536722F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC188032-15B6-4136-B040-67B2536722F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

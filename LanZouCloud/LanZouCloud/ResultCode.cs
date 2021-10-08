@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LanZouCloud
+namespace LanZouAPI
 {
     public enum ResultCode
     {

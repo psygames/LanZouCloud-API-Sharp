@@ -1,163 +1,76 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Net;
-using System.Net.Security;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.Http;
 
-namespace LanZouCloud
+namespace LanZouAPI
 {
     public class Http
     {
-        public Task<string> GetText(string url, string proxy = null)
+        private HttpClientHandler clientHandler;
+        private HttpClient client;
+        private const float DEFAULT_TIMEOUT = 10;
+
+        public Http()
         {
-            return InnerHttp.GetText(url, proxy);
+            clientHandler = new HttpClientHandler();
+            clientHandler.UseCookies = true;
+            client = new HttpClient(clientHandler, true);
+            SetTimeout(DEFAULT_TIMEOUT);
         }
 
-        public Task<byte[]> GetBytes(string url, string proxy = null)
+        public void SetProxy(string address)
         {
-            return InnerHttp.GetBytes(url, proxy);
+            clientHandler.UseProxy = true;
+            clientHandler.Proxy = new WebProxy(address);
         }
 
-        public Task<bool> Download(string url, string path, IProgress<long[]> progress = null, string proxy = null)
+        public void SetTimeout(float timeout)
         {
-            return InnerHttp.Download(url, path, progress, proxy);
+            client.Timeout = new TimeSpan((long)(timeout * 10000000L));
         }
 
-        static class InnerHttp
+        public void SetHeaders(Dictionary<string, string> headers)
         {
-            // Windows
-            // private const string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
-
-            // Android
-            private const string userAgent = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Mobile Safari/537.36";
-            private const int DOWNLOAD_BUFFER_SIZE = 1024 * 8;
-            private static Encoding encode = Encoding.UTF8;
-
-            private static bool isProtocolFixed;
-            private static void FixProtocol()
+            foreach (var item in headers)
             {
-                if (isProtocolFixed) return;
-                ServicePointManager.DefaultConnectionLimit = 1000;                          // 连接数限制
-                ServicePointManager.ServerCertificateValidationCallback =                   // 证书校验
-                    new RemoteCertificateValidationCallback(delegate { return true; });
-                try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)4080; }  // SSL支持
-                catch { }
-                isProtocolFixed = true;
+                client.DefaultRequestHeaders.Add(item.Key, item.Value);
             }
+        }
 
-            internal static async Task<bool> Download(string url, string path, IProgress<long[]> progress, string proxy)
+        public void SetCookie(string name, string val)
+        {
+            //TODO: Set Cookie
+        }
+
+        public void SetCookies(List<Cookie> cookies)
+        {
+            clientHandler.CookieContainer = new CookieContainer();
+            foreach (var item in cookies)
             {
-                try
-                {
-                    FixProtocol();
-
-                    var request = WebRequest.Create(url) as HttpWebRequest;
-                    request.UserAgent = userAgent;
-
-                    if (!string.IsNullOrEmpty(proxy))
-                    {
-                        var proxyObject = new WebProxy(proxy);
-                        request.Proxy = proxyObject;
-                    }
-
-                    var response = await request.GetResponseAsync() as HttpWebResponse;
-                    var buffer = new byte[DOWNLOAD_BUFFER_SIZE];
-                    var stream = response.GetResponseStream();
-                    var fileStream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write);
-                    fileStream.SetLength(0);
-                    var report = new long[2]; // 0-current, 1-total 
-                    report[0] = 0;
-                    report[1] = response.ContentLength;
-                    progress?.Report(report);
-                    int readLength = 0;
-                    do
-                    {
-                        readLength = await stream.ReadAsync(buffer, 0, DOWNLOAD_BUFFER_SIZE);
-                        fileStream.Write(buffer, 0, readLength);
-                        report[0] += readLength;
-                        progress?.Report(report);
-                    } while (readLength > 0);
-                    fileStream.Close();
-                    stream.Close();
-                    response.Close();
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex);
-                }
-                return false;
+                clientHandler.CookieContainer.Add(item);
             }
+        }
 
-            internal static async Task<byte[]> GetBytes(string url, string proxy)
-            {
-                try
-                {
-                    FixProtocol();
+        public string GetString(string url)
+        {
+            var res = client.GetStringAsync(url);
+            res.Wait();
+            return res.Result;
+        }
 
-                    var request = WebRequest.Create(url) as HttpWebRequest;
-                    request.UserAgent = userAgent;
+        public string PostString(string url, Dictionary<string, string> data)
+        {
+            var content = new FormUrlEncodedContent(data);
+            var res = client.PostAsync(url, content);
+            res.Wait();
+            var text = res.Result.Content.ReadAsStringAsync();
+            return text.Result;
+        }
 
-                    if (!string.IsNullOrEmpty(proxy))
-                    {
-                        var proxyObject = new WebProxy(proxy);
-                        request.Proxy = proxyObject;
-                    }
+        public void Download(string url, string path, IProgress<long[]> progress = null)
+        {
 
-                    var response = await request.GetResponseAsync() as HttpWebResponse;
-                    var buffer = new byte[DOWNLOAD_BUFFER_SIZE];
-                    var stream = response.GetResponseStream();
-                    var memoryStream = new MemoryStream();
-                    int readLength = 0;
-                    do
-                    {
-                        readLength = await stream.ReadAsync(buffer, 0, DOWNLOAD_BUFFER_SIZE);
-                        memoryStream.Write(buffer, 0, readLength);
-                    } while (readLength > 0);
-                    var bytes = memoryStream.ToArray();
-                    memoryStream.Close();
-                    stream.Close();
-                    response.Close();
-                    return bytes;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex.Message);
-                }
-                return null;
-            }
-
-            internal static async Task<string> GetText(string url, string proxy)
-            {
-                try
-                {
-                    FixProtocol();
-
-                    var request = WebRequest.Create(url) as HttpWebRequest;
-                    request.UserAgent = userAgent;
-
-                    if (!string.IsNullOrEmpty(proxy))
-                    {
-                        var proxyObject = new WebProxy(proxy);
-                        request.Proxy = proxyObject;
-                    }
-
-                    var response = await request.GetResponseAsync() as HttpWebResponse;
-                    var stream = response.GetResponseStream();
-                    var reader = new StreamReader(stream, encode);
-                    var text = await reader.ReadToEndAsync();
-                    reader.Close();
-                    stream.Close();
-                    response.Close();
-                    return text;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex.Message);
-                }
-                return null;
-            }
         }
     }
 }

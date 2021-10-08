@@ -5,7 +5,7 @@ using System.Net.Security;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LanZouCloud
+namespace LanZouAPI
 {
     public class Log
     {
@@ -24,6 +24,15 @@ namespace LanZouCloud
             UnityEngine.Debug.LogError($"[EasyHttp][Warning] {log}");
 #else
             Console.WriteLine($"[EasyHttp][Warning] {log}");
+#endif
+        }
+
+        public static void Info(object log)
+        {
+#if UNITY_5_3_OR_NEWER
+            UnityEngine.Debug.LogError($"[EasyHttp][Info] {log}");
+#else
+            Console.WriteLine($"[EasyHttp][Info] {log}");
 #endif
         }
     }
