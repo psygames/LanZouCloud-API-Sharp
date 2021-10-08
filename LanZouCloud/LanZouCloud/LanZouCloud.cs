@@ -76,12 +76,11 @@ namespace LanZouAPI
         /// <returns></returns>
         public ResultCode login_by_cookie(string ylogin, string phpdisk_info)
         {
-            _session.SetCookies(new List<Cookie>() {
-                new Cookie("ylogin", ylogin, null, "woozooo.com"),
-                new Cookie("phpdisk_info", phpdisk_info, null, "pc.woozooo.com"),
-            });
-            var html = _get(_account_url);
-            Log.Info(html);
+            _session.AllowRedirect(true);
+            _session.AddCookie(".woozooo.com", "ylogin", ylogin);
+            _session.AddCookie(".woozooo.com", "phpdisk_info", phpdisk_info);
+            var html = _get_text(_account_url);
+            _session.AllowRedirect(false);
             if (string.IsNullOrEmpty(html))
                 return ResultCode.NETWORK_ERROR;
             if (html.Contains("网盘用户登录"))
@@ -95,7 +94,7 @@ namespace LanZouAPI
         /// <returns></returns>
         public ResultCode logout()
         {
-            var html = _get($"{_account_url}?action=logout");
+            var html = _get_text($"{_account_url}?action=logout");
             if (string.IsNullOrEmpty(html))
                 return ResultCode.NETWORK_ERROR;
             if (html.Contains("退出系统成功"))
@@ -111,7 +110,7 @@ namespace LanZouAPI
         /// <returns></returns>
         public ResultCode delete(long fid, bool is_file)
         {
-            Dictionary<string, string> post_data = null;
+            Dictionary<string, string> post_data;
             if (is_file)
                 post_data = new Dictionary<string, string>() { { "task", $"{6}" }, { "file_id", $"{fid}" } };
             else
@@ -143,7 +142,6 @@ namespace LanZouAPI
                 };
 
                 var resp = _post(_doupload_url, post_data);
-                Log.Info(resp);
                 if (string.IsNullOrEmpty(resp))     // 网络异常，重试
                     continue;
                 var json = JsonMapper.ToObject(resp);
@@ -185,7 +183,6 @@ namespace LanZouAPI
                 };
 
             var resp = _post(_doupload_url, post_data);
-            Log.Info(resp);
             if (string.IsNullOrEmpty(resp))     // 网络异常，重试
                 return folder_list;
             var json = JsonMapper.ToObject(resp);
@@ -268,7 +265,7 @@ namespace LanZouAPI
             if (!is_file_url(share_url))  // 非文件链接返回错误
                 return new CloudFileDetail(ResultCode.URL_INVALID, pwd, share_url);
 
-            var first_page = _get(share_url);  // 文件分享页面(第一页)
+            var first_page = _get_text(share_url);  // 文件分享页面(第一页)
             if (string.IsNullOrEmpty(first_page))
                 return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
 
@@ -277,9 +274,9 @@ namespace LanZouAPI
                 // 在页面被过多访问或其他情况下，有时候会先返回一个加密的页面，其执行计算出一个acw_sc__v2后放入页面后再重新访问页面才能获得正常页面
                 // 若该页面进行了js加密，则进行解密，计算acw_sc__v2，并加入cookie
                 var acw_sc__v2 = calc_acw_sc__v2(first_page);
-                _session.SetCookie("acw_sc__v2", acw_sc__v2);
+                _session.SetCookies(share_url, $"acw_sc__v2={acw_sc__v2}");
                 Log.Info($"Set Cookie: acw_sc__v2={acw_sc__v2}");
-                first_page = _get(share_url);   // 文件分享页面(第一页)
+                first_page = _get_text(share_url);   // 文件分享页面(第一页)
                 if (string.IsNullOrEmpty(first_page))
                     return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
             }
@@ -306,7 +303,7 @@ namespace LanZouAPI
                         { "p", $"{pwd}" },
                     };
                 var link_info_str = _post(_host_url + "/ajaxm.php", post_data);  // 保存了重定向前的链接信息和文件名
-                var second_page = _get(share_url);  // 再次请求文件分享页面，可以看见文件名，时间，大小等信息(第二页)
+                var second_page = _get_text(share_url);  // 再次请求文件分享页面，可以看见文件名，时间，大小等信息(第二页)
                 if (string.IsNullOrEmpty(link_info_str) || string.IsNullOrEmpty(second_page))
                     return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
 
@@ -349,7 +346,7 @@ namespace LanZouAPI
                 var f_desc_match = Regex.Match(first_page, @"文件描述.+?<br>\n?\s*(.*?)\s*</td>");
                 f_desc = f_desc_match.Success ? f_desc_match.Groups[1].Value : "";
 
-                first_page = _get(_host_url + para);
+                first_page = _get_text(_host_url + para);
                 if (string.IsNullOrEmpty(first_page))
                     return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
                 first_page = remove_notes(first_page);
@@ -372,35 +369,40 @@ namespace LanZouAPI
             if ((int)link_info["zt"] != 1)  //# 返回信息异常，无法获取直链
                 return new CloudFileDetail(ResultCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
 
-            var fake_url = link_info["dom"].ToJson() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
+            var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
             var download_page = _get(fake_url);
-            if (string.IsNullOrEmpty(download_page))
-                return FileDetail(LanZouCloud.NETWORK_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
-                                  pwd = pwd, url = share_url)
-            download_page.encoding = 'utf-8'
-            download_page_html = remove_notes(download_page.text)
-            if '网络异常' not in download_page_html:  # 没有遇到验证码
-                direct_url = download_page.headers['Location']  # 重定向后的真直链
-            else:  # 遇到验证码，验证后才能获取下载直链
-                file_token = re.findall("'file':'(.+?)'", download_page_html)[0]
-                file_sign = re.findall("'sign':'(.+?)'", download_page_html)[0]
-                check_api = 'https://vip.d0.baidupan.com/file/ajax.php'
-                post_data = { 'file': file_token, 'el': 2, 'sign': file_sign}
-            sleep(2)  # 这里必需等待2s, 否则直链返回 ?SignError
-                resp = self._post(check_api, post_data)
-                direct_url = resp.json()['url']
-                if not direct_url:
-                return FileDetail(LanZouCloud.CAPTCHA_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
-                                  pwd = pwd, url = share_url)
+            if (download_page == null || download_page.StatusCode != HttpStatusCode.Found)
+                return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
 
-            f_type = f_name.split('.')[-1]
-            return FileDetail(LanZouCloud.SUCCESS,
-                              name = f_name, size = f_size, type = f_type, time = f_time,
-                              desc = f_desc, pwd = pwd, url = share_url, durl = direct_url)
+            // download_page.encoding = 'utf-8'
+            var task = download_page.Content.ReadAsStringAsync();
+            task.Wait();
+            var download_page_html = remove_notes(task.Result);
+            string direct_url;
+            if (!download_page_html.Contains("网络异常"))  // 没有遇到验证码
+            {
+                direct_url = download_page.Headers.Location.AbsoluteUri;  // 重定向后的真直链
+            }
+            else // 遇到验证码，验证后才能获取下载直链
+            {
+                var file_token = Regex.Match(download_page_html, "'file':'(.+?)'").Value;
+                var file_sign = Regex.Match(download_page_html, "'sign':'(.+?)'").Value;
+                var check_api = "https://vip.d0.baidupan.com/file/ajax.php";
+                var post_data = new Dictionary<string, string>(){
+                        { "file", $"{file_token}" },
+                        { "el", $"{2}" },
+                        { "sign", $"{file_sign}" },
+                    };
+                System.Threading.Thread.Sleep(2000);  // 这里必需等待2s, 否则直链返回 ?SignError
+                var resp = _post(check_api, post_data);
+                var json = JsonMapper.ToObject(resp);
+                direct_url = json["url"].ToString();
+                if (string.IsNullOrEmpty(direct_url))
+                    return new CloudFileDetail(ResultCode.CAPTCHA_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+            }
 
-                    */
-
-                return null;
+            var f_type = Path.GetExtension(f_name).Substring(1);
+            return new CloudFileDetail(ResultCode.SUCCESS, f_name, f_time, f_size, f_desc, pwd, share_url, f_type, direct_url);
         }
 
         /// <summary>

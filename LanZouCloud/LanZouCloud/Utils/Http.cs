@@ -15,9 +15,15 @@ namespace LanZouAPI
         {
             clientHandler = new HttpClientHandler();
             clientHandler.UseCookies = true;
-            clientHandler.AllowAutoRedirect = false;
+            clientHandler.AllowAutoRedirect = true;
+            clientHandler.CookieContainer = new CookieContainer();
             client = new HttpClient(clientHandler, true);
             SetTimeout(DEFAULT_TIMEOUT);
+        }
+
+        public void AllowRedirect(bool allowRedirect)
+        {
+            clientHandler.AllowAutoRedirect = allowRedirect;
         }
 
         public void SetProxy(string address)
@@ -39,23 +45,26 @@ namespace LanZouAPI
             }
         }
 
-        public void SetCookie(string name, string val)
+        public void SetCookies(string url, string header)
         {
-            //TODO: Set Cookie
+            clientHandler.CookieContainer.SetCookies(new Uri(url), header);
         }
 
-        public void SetCookies(List<Cookie> cookies)
+        public void AddCookie(string domain,string name,string value)
         {
-            clientHandler.CookieContainer = new CookieContainer();
-            foreach (var item in cookies)
-            {
-                clientHandler.CookieContainer.Add(item);
-            }
+            clientHandler.CookieContainer.Add(new Cookie(name, value, null, domain));
         }
 
         public string GetString(string url)
         {
             var res = client.GetStringAsync(url);
+            res.Wait();
+            return res.Result;
+        }
+
+        public HttpResponseMessage Get(string url)
+        {
+            var res = client.GetAsync(url);
             res.Wait();
             return res.Result;
         }

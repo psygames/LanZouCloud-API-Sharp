@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -9,13 +10,29 @@ namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private string _get(string url)
+        private string _get_text(string url)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
                     return _session.GetString(possible_url);
+                }
+                catch
+                {
+                    Log.Error($"Get {possible_url} failed, try another domain");
+                }
+            }
+            return null;
+        }
+
+        private HttpResponseMessage _get(string url)
+        {
+            foreach (var possible_url in _all_possible_urls(url))
+            {
+                try
+                {
+                    return _session.Get(possible_url);
                 }
                 catch
                 {
@@ -55,12 +72,16 @@ namespace LanZouAPI
         /// <returns></returns>
         private static string[] _all_possible_urls(string url)
         {
-            var possible_urls = new string[available_domains.Length];
-            for (int i = 0; i < possible_urls.Length; i++)
+            if (url.Contains("lanzous.com"))
             {
-                possible_urls[i] = url.Replace("lanzous.com", available_domains[i]);
+                var possible_urls = new string[available_domains.Length];
+                for (int i = 0; i < possible_urls.Length; i++)
+                {
+                    possible_urls[i] = url.Replace("lanzous.com", available_domains[i]);
+                }
+                return possible_urls;
             }
-            return possible_urls;
+            return new string[] { url };
         }
 
 
@@ -93,7 +114,7 @@ namespace LanZouAPI
                 return true;
 
             // VIP 用户的 URL 很随意
-            var html = _get(share_url);
+            var html = _get_text(share_url);
             if (string.IsNullOrEmpty(share_url))
                 return false;
 
@@ -165,7 +186,7 @@ namespace LanZouAPI
             //    return (datetime.today() - timedelta(days = int(days))).strftime('%Y-%m-%d')
             //else:
             //    return time_str
-            return DateTime.Now;
+            return "todo time format";
         }
     }
 }

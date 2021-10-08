@@ -29,8 +29,14 @@ namespace LanZouAPI
     public class CloudFileDetail
     {
         public ResultCode code;
-        public string url;
+        public string name;
         public string pwd;
+        public string desc;
+        public string url;
+        public string size;
+        public string time;
+        public string type;
+        public string durl;
 
         public CloudFileDetail(ResultCode code)
         {
@@ -47,8 +53,26 @@ namespace LanZouAPI
         public CloudFileDetail(ResultCode code, string name, string time, string size, string desc, string pwd, string url)
         {
             this.code = code;
+            this.name = name;
+            this.time = time;
+            this.size = size;
+            this.desc = desc;
             this.pwd = pwd;
             this.url = url;
+        }
+
+
+        public CloudFileDetail(ResultCode code, string name, string time, string size, string desc, string pwd, string url, string type, string durl)
+        {
+            this.code = code;
+            this.name = name;
+            this.time = time;
+            this.size = size;
+            this.desc = desc;
+            this.pwd = pwd;
+            this.url = url;
+            this.type = type;
+            this.durl = durl;
         }
     }
 
