@@ -15,6 +15,7 @@ namespace LanZouAPI
         {
             clientHandler = new HttpClientHandler();
             clientHandler.UseCookies = true;
+            clientHandler.AllowAutoRedirect = false;
             client = new HttpClient(clientHandler, true);
             SetTimeout(DEFAULT_TIMEOUT);
         }

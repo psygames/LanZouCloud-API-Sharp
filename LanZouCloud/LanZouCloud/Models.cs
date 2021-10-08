@@ -44,7 +44,7 @@ namespace LanZouAPI
             this.url = url;
         }
 
-        public CloudFileDetail(ResultCode code, string name, string time, string size, string desc, string pwd, string share_url)
+        public CloudFileDetail(ResultCode code, string name, string time, string size, string desc, string pwd, string url)
         {
             this.code = code;
             this.pwd = pwd;

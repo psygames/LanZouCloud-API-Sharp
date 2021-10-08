@@ -288,6 +288,7 @@ namespace LanZouAPI
             if (first_page.Contains("文件取消") || first_page.Contains("文件不存在"))
                 return new CloudFileDetail(ResultCode.FILE_CANCELLED, pwd, share_url);
 
+            JsonData link_info;
             string f_name;
             string f_time;
             string f_size;
@@ -309,7 +310,7 @@ namespace LanZouAPI
                 if (string.IsNullOrEmpty(link_info_str) || string.IsNullOrEmpty(second_page))
                     return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
 
-                var link_info = JsonMapper.ToObject(link_info_str);
+                link_info = JsonMapper.ToObject(link_info_str);
                 second_page = remove_notes(second_page);
                 // 提取文件信息
                 f_name = link_info["inf"].ToString().Replace("*", "_");
@@ -353,26 +354,29 @@ namespace LanZouAPI
                     return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
                 first_page = remove_notes(first_page);
                 // 一般情况 sign 的值就在 data 里，有时放在变量后面
-                sign = Regex.Match(r"'sign':(.+?),", first_page).group(1)
-                if len(sign) < 20:  # 此时 sign 保存在变量里面, 变量名是 sign 匹配的字符
-                    sign = re.search(rf"var {sign}\s*=\s*'(.+?)';", first_page).group(1)
-                post_data = { 'action': 'downprocess', 'sign': sign, 'ves': 1}
-                link_info = self._post(self._host_url + '/ajaxm.php', post_data)
-                if not link_info:
-                    return FileDetail(LanZouCloud.NETWORK_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
-                                      pwd = pwd, url = share_url)
-                link_info = link_info.json()
+                var sign = Regex.Match(first_page, "'sign':(.+?),").Groups[1].Value;
+                if (sign.Length < 20)  // 此时 sign 保存在变量里面, 变量名是 sign 匹配的字符
+                    sign = Regex.Match(first_page, $"var {sign}\\s*=\\s*'(.+?)';").Groups[1].Value;
+                var post_data = new Dictionary<string, string>(){
+                        { "action", "downprocess" },
+                        { "sign", $"{sign}" },
+                        { "ves", $"{1}" },
+                    };
+                var link_info_str = _post(_host_url + "/ajaxm.php", post_data);
+                if (string.IsNullOrEmpty(link_info_str))
+                    return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                link_info = JsonMapper.ToObject(link_info_str);
+            }
 
-            # 这里开始获取文件直链
-                if link_info['zt'] != 1:  # 返回信息异常，无法获取直链
-                return FileDetail(LanZouCloud.FAILED, name = f_name, time = f_time, size = f_size, desc = f_desc, pwd = pwd,
-                                  url = share_url)
+            // 这里开始获取文件直链
+            if ((int)link_info["zt"] != 1)  //# 返回信息异常，无法获取直链
+                return new CloudFileDetail(ResultCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
 
-            fake_url = link_info['dom'] + '/file/' + link_info['url']  # 假直连，存在流量异常检测
-            download_page = self._get(fake_url, allow_redirects = False)
-            if not download_page:
-                    return FileDetail(LanZouCloud.NETWORK_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
-                                      pwd = pwd, url = share_url)
+            var fake_url = link_info["dom"].ToJson() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
+            var download_page = _get(fake_url);
+            if (string.IsNullOrEmpty(download_page))
+                return FileDetail(LanZouCloud.NETWORK_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
+                                  pwd = pwd, url = share_url)
             download_page.encoding = 'utf-8'
             download_page_html = remove_notes(download_page.text)
             if '网络异常' not in download_page_html:  # 没有遇到验证码
@@ -382,12 +386,12 @@ namespace LanZouAPI
                 file_sign = re.findall("'sign':'(.+?)'", download_page_html)[0]
                 check_api = 'https://vip.d0.baidupan.com/file/ajax.php'
                 post_data = { 'file': file_token, 'el': 2, 'sign': file_sign}
-                sleep(2)  # 这里必需等待2s, 否则直链返回 ?SignError
+            sleep(2)  # 这里必需等待2s, 否则直链返回 ?SignError
                 resp = self._post(check_api, post_data)
                 direct_url = resp.json()['url']
                 if not direct_url:
-                    return FileDetail(LanZouCloud.CAPTCHA_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
-                                      pwd = pwd, url = share_url)
+                return FileDetail(LanZouCloud.CAPTCHA_ERROR, name = f_name, time = f_time, size = f_size, desc = f_desc,
+                                  pwd = pwd, url = share_url)
 
             f_type = f_name.split('.')[-1]
             return FileDetail(LanZouCloud.SUCCESS,
@@ -397,20 +401,20 @@ namespace LanZouAPI
                     */
 
                 return null;
-            }
-
-            /// <summary>
-            /// 通过 id 获取文件信息
-            /// </summary>
-            /// <param name="file_id"></param>
-            /// <returns></returns>
-            public CloudFileDetail get_file_info_by_id(long file_id)
-            {
-                var info = get_share_info(file_id);
-                if (info.code != ResultCode.SUCCESS)
-                    return new CloudFileDetail(info.code);
-                return get_file_info_by_url(info.url, info.pwd);
-            }
-            #endregion
         }
+
+        /// <summary>
+        /// 通过 id 获取文件信息
+        /// </summary>
+        /// <param name="file_id"></param>
+        /// <returns></returns>
+        public CloudFileDetail get_file_info_by_id(long file_id)
+        {
+            var info = get_share_info(file_id);
+            if (info.code != ResultCode.SUCCESS)
+                return new CloudFileDetail(info.code);
+            return get_file_info_by_url(info.url, info.pwd);
+        }
+        #endregion
     }
+}
