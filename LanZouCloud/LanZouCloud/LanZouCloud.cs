@@ -114,7 +114,7 @@ namespace LanZouAPI
             else
                 post_data = new Dictionary<string, string>() { { "task", $"{3}" }, { "folder_id", $"{fid}" } };
             var text = _post(_doupload_url, post_data);
-            return _normal_rescode(text);
+            return _get_rescode(text);
         }
 
 
@@ -465,7 +465,7 @@ namespace LanZouAPI
                 };
 
             var result = _post(_doupload_url, post_data);
-            return _normal_rescode(result);
+            return _get_rescode(result);
         }
 
         /// <summary>
@@ -529,7 +529,7 @@ namespace LanZouAPI
                     { "folder_description", $"{desc}" },
                 };
             var result = _post(_doupload_url, post_data);
-            return _normal_rescode(result);
+            return _get_rescode(result);
         }
 
         /// <summary>
@@ -565,7 +565,7 @@ namespace LanZouAPI
                     { "desc", $"{desc}" },
                 };
                 var result = _post(_doupload_url, post_data);
-                return _normal_rescode(result);
+                return _get_rescode(result);
             }
             else
             {
@@ -592,7 +592,7 @@ namespace LanZouAPI
                     { "type", $"{2}" },
                 };
             var result = _post(_doupload_url, post_data);
-            return _normal_rescode(result);
+            return _get_rescode(result);
         }
 
         /// <summary>
@@ -625,10 +625,239 @@ namespace LanZouAPI
         }
 
 
+        /// <summary>
+        /// 获取所有文件夹的绝对路径(耗时长)
+        /// </summary>
+        /// <returns></returns>
+        public Dictionary<long, string> get_move_paths()
+        {
+            // 官方 bug, 可能会返回一些已经被删除的"幽灵文件夹"
+            /*
+            result = []
+            root = FolderList()
+            root.append(FolderId('LanZouCloud', -1))
+            result.append(root)
+            resp = self._post(self._doupload_url, data ={ "task": 19, "file_id": -1})
+            if not resp or resp.json()['zt'] != 1:  # 获取失败或者网络异常
+                return result
+
+            ex = ThreadPoolExecutor()  # 线程数 min(32, os.cpu_count() + 4)
+            id_list = [int(folder['folder_id']) for folder in resp.json()['info']]
+            task_list = [ex.submit(self.get_full_path, fid) for fid in id_list]
+            for task in as_completed(task_list) :
+                result.append(task.result())
+            return sorted(result)
+            */
+            return null;
+
+        }
+
+        /// <summary>
+        /// 移动文件到指定文件夹
+        /// </summary>
+        /// <param name="file_id"></param>
+        /// <param name="folder_id"></param>
+        /// <returns></returns>
+        public LanZouCode move_file(long file_id, long folder_id = -1)
+        {
+            // 移动回收站文件也返回成功(实际上行不通) (+_+)?
+            var post_data = _post_data("task", $"{20}", "file_id", $"{file_id}", "folder_id", $"{folder_id}");
+            var result = _post(_doupload_url, post_data);
+            Log.Info($"Move file file_id:{file_id} to folder_id:{folder_id}");
+            return _get_rescode(result);
+        }
+
+        /// <summary>
+        /// 移动文件夹(官方并没有直接支持此功能)
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public LanZouCode move_folder(long folder_id, long parent_folder_id = -1)
+        {
+            // 禁止移动文件夹到自身，禁止移动到 -2 这样的文件夹(文件还在,但是从此不可见)
+            if (folder_id == parent_folder_id || parent_folder_id < -1)
+                return LanZouCode.FAILED;
+
+            if (!get_move_folders().TryGetValue(folder_id, out var folder_name))
+            {
+                Log.Warning($"Not found folder id: {folder_id}");
+                return LanZouCode.FAILED;
+            }
+
+            // 存在子文件夹，禁止移动
+            if (get_dir_list(folder_id).Count > 0)
+            {
+                // 递归操作可能会产生大量请求,这里只允许移动单层文件夹
+                Log.Warning($"Found subdirectory in folder id: {folder_id}");
+                return LanZouCode.FAILED;
+            }
+
+            // 在目标文件夹下创建同名文件夹
+            var info = get_share_info(folder_id, false);
+            var mkdir_info = mkdir(folder_name, parent_folder_id, info.desc);
+
+            if (mkdir_info.code != LanZouCode.SUCCESS)
+                return LanZouCode.FAILED;
+            else if (mkdir_info.id == folder_id)            // 移动文件夹到同一目录
+                return LanZouCode.FAILED;
+
+            set_passwd(mkdir_info.id, info.pwd, false);     // 保持密码相同
+
+            // 移动子文件至新目录下
+            foreach (var file in get_file_list(folder_id))
+            {
+                var _code = move_file(file.id, mkdir_info.id);
+                if (_code != LanZouCode.SUCCESS)
+                {
+                    Log.Warning($"Move file Failed id：{file.id}");
+                    return LanZouCode.FAILED;
+                }
+            }
+
+            // 全部移动完成后删除原文件夹
+            delete(folder_id, false);
+            //TODO: delete_rec(folder_id, false);
+
+            return LanZouCode.SUCCESS;
+        }
 
 
+        /// <summary>
+        /// 通过分享链接下载文件(需提取码)
+        /// </summary>
+        /// <param name="share_url"></param>
+        /// <param name="save_dir"></param>
+        /// <param name="pwd"></param>
+        /// <param name="overwrite">文件已存在时是否强制覆盖</param>
+        /// <param name="progress">用于显示下载进度</param>
+        /// <returns></returns>
+        public LanZouCode down_file_by_url(string share_url, string save_dir,
+            string pwd = "", bool overwrite = false, IProgress<DownloadInfo> progress = null)
+        {
+            if (!is_file_url(share_url))
+                return LanZouCode.URL_INVALID;
+            if (!Directory.Exists(save_dir))
+                Directory.CreateDirectory(save_dir);
 
+            var info = get_durl_by_url(share_url, pwd);
+            Log.Info($"File direct url info: {info}");
+            if (info.code != LanZouCode.SUCCESS)
+                return info.code;
 
+            var resp = _get(info.durl);
+            if (resp == null)
+                return LanZouCode.FAILED;
+
+            // 如果本地存在同名文件且设置了 overwrite, 则覆盖原文件
+            // 否则修改下载文件路径, 自动在文件名后加序号
+            var file_path = Path.Combine(save_dir, info.name);
+            if (File.Exists(file_path))
+            {
+                if (overwrite)
+                {
+                    Log.Info($"Overwrite file {file_path}");
+                    File.Delete(file_path); // 删除旧文件
+                }
+                else    // 自动重命名文件
+                {
+                    file_path = _auto_rename(file_path);
+                    Log.Info($"File has already exists, auto rename to {file_path}");
+                }
+            }
+
+            var tmp_file_path = file_path + ".download";  // 正在下载中的文件名
+            Log.Info($"Save file to {tmp_file_path}");
+
+            // 对于 txt 文件, 可能出现没有 Content-Length 的情况
+            // 此时文件需要下载一次才会出现 Content-Length
+            // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
+
+            if (!resp.Headers.TryGetValues("Content-Length", out var _content_lens))
+            {
+                //TODO: content length
+                /*
+                data_iter = resp.iter_content(chunk_size = 1)
+                max_retries = 5  # 5 次拿不到就算了
+                while not content_length and max_retries > 0:
+                    max_retries -= 1
+                    logger.warning("Not found Content-Length in response headers")
+                    logger.debug("Read 1 byte from stream...")
+                    try:
+                        next(data_iter)  # 读取一个字节
+                    except StopIteration:
+                        logger.debug("Please wait for a moment before downloading")
+                        return LanZouCloud.FAILED
+                    resp_ = self._get(info.durl, stream = True)  # 再请求一次试试
+                    if not resp_:
+                        return LanZouCloud.FAILED
+                    content_length = resp_.headers.get('Content-Length', None)
+                    logger.debug(f"Content-Length: {content_length}")
+                */
+            }
+
+            if (_content_lens == null)
+                return LanZouCode.FAILED;  // 应该不会出现这种情况
+
+            // 支持断点续传下载
+            long now_size = 0;
+            if (File.Exists(tmp_file_path))
+                now_size = new FileInfo(tmp_file_path).Length;  // 本地已经下载的文件大小
+            /*
+            headers = { **self._headers, 'Range': 'bytes=%d-' % now_size }
+                resp = _get(info.durl, stream = True, headers = headers)
+
+            if resp is None:  # 网络异常
+                return LanZouCloud.FAILED
+            if resp.status_code == 416:  # 已经下载完成
+                return LanZouCloud.SUCCESS
+
+            with open(tmp_file_path, "ab") as f:
+                file_name = os.path.basename(file_path)
+                for chunk in resp.iter_content(4096):
+                    if chunk:
+                        f.write(chunk)
+                        f.flush()
+                        now_size += len(chunk)
+                        if callback is not None:
+                            callback(file_name, int(content_length), now_size)
+
+            # 文件下载完成后, 检查文件尾部 512 字节数据
+            # 绕过官方限制上传时, API 会隐藏文件真实信息到文件尾部
+            # 这里尝试提取隐藏信息, 并截断文件尾部数据
+                os.rename(tmp_file_path, file_path)  # 下载完成，改回正常文件名
+            if os.path.getsize(file_path) > 512:  # 文件大于 512 bytes 就检查一下
+                file_info = None
+                with open(file_path, 'rb') as f:
+                    f.seek(-512, os.SEEK_END)
+                    last_512_bytes = f.read()
+                    file_info = un_serialize(last_512_bytes)
+
+                # 大文件的记录文件也可以反序列化出 name,但是没有 padding 字段
+                if file_info is not None and 'padding' in file_info:
+                real_name = file_info['name']  # 解除伪装的真实文件名
+                    logger.debug(f"Find meta info: real_name={real_name}")
+                    real_path = save_dir + os.sep + real_name
+                    # 如果存在同名文件且设置了 overwrite, 删掉原文件
+                    if overwrite and os.path.exists(real_path):
+                        os.remove(real_path)
+            # 自动重命名, 文件存在就会加个序号
+                    new_file_path = auto_rename(real_path)
+                    os.rename(file_path, new_file_path)
+            # 截断最后 512 字节隐藏信息, 还原文件
+                    with open(new_file_path, 'rb+') as f:
+                        f.seek(-512, os.SEEK_END)
+                        f.truncate()
+                    file_path = new_file_path  # 保存文件重命名后真实路径
+
+            # 如果设置了下载完成的回调函数, 调用之
+            if downloaded_handler is not None:
+                downloaded_handler(os.path.abspath(file_path))
+            return LanZouCloud.SUCCESS
+        */
+
+            return LanZouCode.FAILED;
+        }
         #endregion
     }
 }

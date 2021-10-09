@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace LanZouAPI
 {
@@ -199,13 +197,65 @@ namespace LanZouAPI
             return Regex.Replace(name, "[$%^!*<>)(+=`'\"/:;,?]", "");
         }
 
-        private LanZouCode _normal_rescode(string text)
+        /// <summary>
+        /// 从返回结果中获得 返回码
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        private LanZouCode _get_rescode(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return LanZouCode.NETWORK_ERROR;
             if (!text.Contains("zt\":1"))
                 return LanZouCode.FAILED;
             return LanZouCode.SUCCESS;
+        }
+
+        /// <summary>
+        /// 构建 Post 数据，格式：key, value, key, value, ...
+        /// </summary>
+        /// <param name="key_vals"></param>
+        /// <returns></returns>
+        private Dictionary<string, string> _post_data(params string[] key_vals)
+        {
+            if (key_vals == null || key_vals.Length % 2 != 0)
+                throw new ArgumentException("参数数量不匹配!");
+            var data = new Dictionary<string, string>();
+            for (int i = 0; i < key_vals.Length; i += 2)
+            {
+                data.Add(key_vals[i], key_vals[i + 1]);
+            }
+            return data;
+        }
+
+        /// <summary>
+        /// 如果文件存在，则给文件名添加序号
+        /// </summary>
+        /// <param name="file_path"></param>
+        /// <returns></returns>
+        private string _auto_rename(string file_path)
+        {
+            if (!File.Exists(file_path))
+                return file_path;
+            var fpath = Path.GetDirectoryName(file_path);
+            var fname_no_ext = Path.GetFileNameWithoutExtension(file_path);
+            var ext = Path.GetExtension(file_path);
+            var count = 1;
+            var fset = new HashSet<string>();
+            foreach (var f in Directory.GetFiles(fpath))
+            {
+                fset.Add(Path.GetFileName(f));
+            }
+            while (count < 99999)
+            {
+                var current = $"{fname_no_ext}({count}){ext}";
+                if (!fset.Contains(current))
+                {
+                    return Path.Combine(fpath, current);
+                }
+                count++;
+            }
+            throw new Exception("重复文件数量过多，或其他未知错误");
         }
     }
 }
