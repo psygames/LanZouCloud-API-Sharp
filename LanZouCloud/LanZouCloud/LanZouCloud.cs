@@ -47,12 +47,12 @@ namespace LanZouAPI
         /// </summary>
         /// <param name="max_size"></param>
         /// <returns></returns>
-        public ResultCode set_max_size(int max_size = 100)
+        public LanZouCode set_max_size(int max_size = 100)
         {
             if (max_size < 100)
-                return ResultCode.FAILED;
+                return LanZouCode.FAILED;
             _max_size = max_size;
-            return ResultCode.SUCCESS;
+            return LanZouCode.SUCCESS;
         }
 
         /// <summary>
@@ -61,12 +61,12 @@ namespace LanZouAPI
         /// <param name="range_begin"></param>
         /// <param name="range_end"></param>
         /// <returns></returns>
-        public ResultCode set_upload_delay(float delay)
+        public LanZouCode set_upload_delay(float delay)
         {
             if (delay < 0)
-                return ResultCode.FAILED;
+                return LanZouCode.FAILED;
             _upload_delay = delay;
-            return ResultCode.SUCCESS;
+            return LanZouCode.SUCCESS;
         }
 
         /// <summary>
@@ -74,30 +74,30 @@ namespace LanZouAPI
         /// </summary>
         /// <param name=""></param>
         /// <returns></returns>
-        public ResultCode login_by_cookie(string ylogin, string phpdisk_info)
+        public LanZouCode login_by_cookie(string ylogin, string phpdisk_info)
         {
             _session.AddCookie(".woozooo.com", "ylogin", ylogin);
             _session.AddCookie(".woozooo.com", "phpdisk_info", phpdisk_info);
             var html = _get_text(_account_url);
             if (string.IsNullOrEmpty(html))
-                return ResultCode.NETWORK_ERROR;
+                return LanZouCode.NETWORK_ERROR;
             if (html.Contains("网盘用户登录"))
-                return ResultCode.FAILED;
-            return ResultCode.SUCCESS;
+                return LanZouCode.FAILED;
+            return LanZouCode.SUCCESS;
         }
 
         /// <summary>
         /// 注销
         /// </summary>
         /// <returns></returns>
-        public ResultCode logout()
+        public LanZouCode logout()
         {
             var html = _get_text($"{_account_url}?action=logout");
             if (string.IsNullOrEmpty(html))
-                return ResultCode.NETWORK_ERROR;
-            if (html.Contains("退出系统成功"))
-                return ResultCode.SUCCESS;
-            return ResultCode.FAILED;
+                return LanZouCode.NETWORK_ERROR;
+            if (!html.Contains("退出系统成功"))
+                return LanZouCode.FAILED;
+            return LanZouCode.SUCCESS;
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace LanZouAPI
         /// <param name="fid"></param>
         /// <param name="is_file"></param>
         /// <returns></returns>
-        public ResultCode delete(long fid, bool is_file)
+        public LanZouCode delete(long fid, bool is_file)
         {
             Dictionary<string, string> post_data;
             if (is_file)
@@ -114,11 +114,7 @@ namespace LanZouAPI
             else
                 post_data = new Dictionary<string, string>() { { "task", $"{3}" }, { "folder_id", $"{fid}" } };
             var text = _post(_doupload_url, post_data);
-            if (string.IsNullOrEmpty(text))
-                return ResultCode.NETWORK_ERROR;
-            if (text.Contains("zt\":1"))
-                return ResultCode.SUCCESS;
-            return ResultCode.FAILED;
+            return _normal_rescode(text);
         }
 
 
@@ -201,71 +197,19 @@ namespace LanZouAPI
         }
 
         /// <summary>
-        /// 获取文件(夹)提取码、分享链接
-        /// </summary>
-        /// <param name="fid"></param>
-        /// <param name="is_file"></param>
-        /// <returns></returns>
-        public ShareInfo get_share_info(long fid, bool is_file = true)
-        {
-            Dictionary<string, string> post_data = null;
-            if (is_file)
-                post_data = new Dictionary<string, string>() { { "task", $"{22}" }, { "file_id", $"{fid}" } };
-            else
-                post_data = new Dictionary<string, string>() { { "task", $"{18}" }, { "folder_id", $"{fid}" } };
-
-            // 获取分享链接和密码用
-            var f_info_str = _post(_doupload_url, post_data);
-            if (string.IsNullOrEmpty(f_info_str))
-                return new ShareInfo(ResultCode.NETWORK_ERROR);
-            var f_info = JsonMapper.ToObject(f_info_str)["info"];
-
-            // id 有效性校验
-            if (f_info.ContainsKey("f_id") && f_info["f_id"].ToString() == "i"
-                || f_info.ContainsKey("name") && string.IsNullOrEmpty((string)f_info["name"]))
-                return new ShareInfo(ResultCode.ID_ERROR);
-
-            // onof=1 时，存在有效的提取码; onof=0 时不存在提取码，但是 pwd 字段还是有一个无效的随机密码
-            var pwd = f_info["onof"].ToString() == "1" ? f_info["pwd"].ToString() : "";
-            string url;
-            string name;
-            string desc;
-            if (f_info.ContainsKey("f_id")) // 说明返回的是文件的信息
-            {
-                url = f_info["is_newd"] + "//" + f_info["f_id"];        // 文件的分享链接需要拼凑
-                var _post_data = new Dictionary<string, string>() { { "task", $"{12}" }, { "file_id", $"{fid}" } };
-                var file_info_str = _post(_doupload_url, _post_data);   // 文件信息
-                if (string.IsNullOrEmpty(file_info_str))
-                    return new ShareInfo(ResultCode.NETWORK_ERROR);
-                var file_info = JsonMapper.ToObject(file_info_str);
-                // 无后缀的文件名(获得后缀又要发送请求,没有就没有吧,尽可能减少请求数量)
-                name = file_info["text"].ToString();
-                desc = file_info["info"].ToString();
-            }
-            else
-            {
-                url = f_info["new_url"].ToString();  // 文件夹的分享链接可以直接拿到
-                name = f_info["name"].ToString();  // 文件夹名
-                desc = f_info["des"].ToString();  // 文件夹描述
-            }
-            return new ShareInfo(ResultCode.SUCCESS, name, url, desc, pwd);
-        }
-
-        /// <summary>
         /// 获取文件各种信息(包括下载直链)
         /// </summary>
         /// <param name="share_url">文件分享链接</param>
         /// <param name="pwd">文件提取码(如果有的话)</param>
         /// <returns></returns>
-
         public CloudFileDetail get_file_info_by_url(string share_url, string pwd = "")
         {
             if (!is_file_url(share_url))  // 非文件链接返回错误
-                return new CloudFileDetail(ResultCode.URL_INVALID, pwd, share_url);
+                return new CloudFileDetail(LanZouCode.URL_INVALID, pwd, share_url);
 
             var first_page = _get_text(share_url);  // 文件分享页面(第一页)
             if (string.IsNullOrEmpty(first_page))
-                return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
+                return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
 
             if (first_page.Contains("acw_sc__v2"))
             {
@@ -276,12 +220,12 @@ namespace LanZouAPI
                 Log.Info($"Set Cookie: acw_sc__v2={acw_sc__v2}");
                 first_page = _get_text(share_url);   // 文件分享页面(第一页)
                 if (string.IsNullOrEmpty(first_page))
-                    return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
+                    return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
             }
 
             first_page = remove_notes(first_page);  // 去除网页里的注释
             if (first_page.Contains("文件取消") || first_page.Contains("文件不存在"))
-                return new CloudFileDetail(ResultCode.FILE_CANCELLED, pwd, share_url);
+                return new CloudFileDetail(LanZouCode.FILE_CANCELLED, pwd, share_url);
 
             JsonData link_info;
             string f_name;
@@ -293,7 +237,7 @@ namespace LanZouAPI
             if (first_page.Contains("id=\"pwdload\"") || first_page.Contains("id=\"passwddiv\""))   // 文件设置了提取码时
             {
                 if (string.IsNullOrEmpty(pwd))
-                    return new CloudFileDetail(ResultCode.LACK_PASSWORD, pwd, share_url);  // 没给提取码直接退出
+                    return new CloudFileDetail(LanZouCode.LACK_PASSWORD, pwd, share_url);  // 没给提取码直接退出
                 var sign = Regex.Match(first_page, "sign=(\\w+?)&").Groups[1].Value;
                 var post_data = new Dictionary<string, string>(){
                         { "action", "downprocess" },
@@ -303,7 +247,7 @@ namespace LanZouAPI
                 var link_info_str = _post(_host_url + "/ajaxm.php", post_data);  // 保存了重定向前的链接信息和文件名
                 var second_page = _get_text(share_url);  // 再次请求文件分享页面，可以看见文件名，时间，大小等信息(第二页)
                 if (string.IsNullOrEmpty(link_info_str) || string.IsNullOrEmpty(second_page))
-                    return new CloudFileDetail(ResultCode.NETWORK_ERROR, pwd, share_url);
+                    return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
 
                 link_info = JsonMapper.ToObject(link_info_str);
                 second_page = remove_notes(second_page);
@@ -346,7 +290,7 @@ namespace LanZouAPI
 
                 first_page = _get_text(_host_url + para);
                 if (string.IsNullOrEmpty(first_page))
-                    return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
                 first_page = remove_notes(first_page);
                 // 一般情况 sign 的值就在 data 里，有时放在变量后面
                 var sign = Regex.Match(first_page, "'sign':(.+?),").Groups[1].Value;
@@ -359,18 +303,18 @@ namespace LanZouAPI
                     };
                 var link_info_str = _post(_host_url + "/ajaxm.php", post_data);
                 if (string.IsNullOrEmpty(link_info_str))
-                    return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
                 link_info = JsonMapper.ToObject(link_info_str);
             }
 
             // 这里开始获取文件直链
             if ((int)link_info["zt"] != 1)  //# 返回信息异常，无法获取直链
-                return new CloudFileDetail(ResultCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
+                return new CloudFileDetail(LanZouCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
             var download_page = _get(fake_url, false);
             if (download_page == null || download_page.StatusCode != HttpStatusCode.Found)
-                return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
 
             // download_page.encoding = 'utf-8'
             var task = download_page.Content.ReadAsStringAsync();
@@ -396,11 +340,11 @@ namespace LanZouAPI
                 var json = JsonMapper.ToObject(resp);
                 direct_url = json["url"].ToString();
                 if (string.IsNullOrEmpty(direct_url))
-                    return new CloudFileDetail(ResultCode.CAPTCHA_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileDetail(LanZouCode.CAPTCHA_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
             }
 
             var f_type = Path.GetExtension(f_name).Substring(1);
-            return new CloudFileDetail(ResultCode.SUCCESS, f_name, f_time, f_size, f_desc, pwd, share_url, f_type, direct_url);
+            return new CloudFileDetail(LanZouCode.SUCCESS, f_name, f_time, f_size, f_desc, pwd, share_url, f_type, direct_url);
         }
 
         /// <summary>
@@ -411,10 +355,280 @@ namespace LanZouAPI
         public CloudFileDetail get_file_info_by_id(long file_id)
         {
             var info = get_share_info(file_id);
-            if (info.code != ResultCode.SUCCESS)
+            if (info.code != LanZouCode.SUCCESS)
                 return new CloudFileDetail(info.code);
             return get_file_info_by_url(info.url, info.pwd);
         }
+
+        /// <summary>
+        /// 通过分享链接获取下载直链
+        /// </summary>
+        /// <param name="share_url"></param>
+        /// <param name="pwd"></param>
+        /// <returns></returns>
+        public DirectUrlInfo get_durl_by_url(string share_url, string pwd = "")
+        {
+            var file_info = get_file_info_by_url(share_url, pwd);
+            if (file_info.code != LanZouCode.SUCCESS)
+                return new DirectUrlInfo(file_info.code);
+            return new DirectUrlInfo(LanZouCode.SUCCESS, file_info.name, file_info.durl);
+        }
+
+        /// <summary>
+        /// 登录用户通过id获取直链
+        /// </summary>
+        /// <param name="file_id"></param>
+        /// <returns></returns>
+        public DirectUrlInfo get_durl_by_id(long file_id)
+        {
+            var info = get_share_info(file_id);  // 能获取直链，一定是文件
+            return get_durl_by_url(info.url, info.pwd);
+        }
+
+        /// <summary>
+        /// 获取文件(夹)提取码、分享链接
+        /// </summary>
+        /// <param name="fid"></param>
+        /// <param name="is_file"></param>
+        /// <returns></returns>
+        public ShareInfo get_share_info(long fid, bool is_file = true)
+        {
+            Dictionary<string, string> post_data;
+            if (is_file)
+                post_data = new Dictionary<string, string>() { { "task", $"{22}" }, { "file_id", $"{fid}" } };
+            else
+                post_data = new Dictionary<string, string>() { { "task", $"{18}" }, { "folder_id", $"{fid}" } };
+
+            // 获取分享链接和密码用
+            var f_info_str = _post(_doupload_url, post_data);
+            if (string.IsNullOrEmpty(f_info_str))
+                return new ShareInfo(LanZouCode.NETWORK_ERROR);
+            var f_info = JsonMapper.ToObject(f_info_str)["info"];
+
+            // id 有效性校验
+            if (f_info.ContainsKey("f_id") && f_info["f_id"].ToString() == "i"
+                || f_info.ContainsKey("name") && string.IsNullOrEmpty((string)f_info["name"]))
+                return new ShareInfo(LanZouCode.ID_ERROR);
+
+            // onof=1 时，存在有效的提取码; onof=0 时不存在提取码，但是 pwd 字段还是有一个无效的随机密码
+            var pwd = f_info["onof"].ToString() == "1" ? f_info["pwd"].ToString() : "";
+            string url;
+            string name;
+            string desc;
+            if (f_info.ContainsKey("f_id")) // 说明返回的是文件的信息
+            {
+                url = f_info["is_newd"] + "//" + f_info["f_id"];        // 文件的分享链接需要拼凑
+                var _post_data = new Dictionary<string, string>() { { "task", $"{12}" }, { "file_id", $"{fid}" } };
+                var file_info_str = _post(_doupload_url, _post_data);   // 文件信息
+                if (string.IsNullOrEmpty(file_info_str))
+                    return new ShareInfo(LanZouCode.NETWORK_ERROR);
+                var file_info = JsonMapper.ToObject(file_info_str);
+                // 无后缀的文件名(获得后缀又要发送请求,没有就没有吧,尽可能减少请求数量)
+                name = file_info["text"].ToString();
+                desc = file_info["info"].ToString();
+            }
+            else
+            {
+                url = f_info["new_url"].ToString();  // 文件夹的分享链接可以直接拿到
+                name = f_info["name"].ToString();  // 文件夹名
+                desc = f_info["des"].ToString();  // 文件夹描述
+            }
+            return new ShareInfo(LanZouCode.SUCCESS, name, url, desc, pwd);
+        }
+
+        /// <summary>
+        /// <para>设置网盘文件(夹)的提取码, 现在非会员用户不允许关闭提取码</para>
+        /// <para>id 无效或者 id 类型不对应仍然返回成功 :(</para>
+        /// <para>文件夹提取码长度 0 - 12 位 文件提取码 2 - 6 位</para>
+        /// </summary>
+        /// <param name="fid"></param>
+        /// <param name="pwd"></param>
+        /// <param name="is_file"></param>
+        /// <returns></returns>
+        public LanZouCode set_passwd(long fid, string pwd = "", bool is_file = true)
+        {
+            var pwd_status = string.IsNullOrEmpty(pwd) ? 0 : 1;  // 是否开启密码
+            Dictionary<string, string> post_data;
+            if (is_file)
+                post_data = new Dictionary<string, string>() {
+                    { "task", $"{23}" },
+                    { "file_id", $"{fid}" },
+                    { "shows", $"{pwd_status}" },
+                    { "shownames", $"{pwd}" },
+                };
+            else
+                post_data = new Dictionary<string, string>() {
+                    { "task", $"{16}" },
+                    { "folder_id", $"{fid}" },
+                    { "shows", $"{pwd_status}" },
+                    { "shownames", $"{pwd}" },
+                };
+
+            var result = _post(_doupload_url, post_data);
+            return _normal_rescode(result);
+        }
+
+        /// <summary>
+        /// 创建文件夹(同时设置描述)
+        /// </summary>
+        /// <param name="folder_name"></param>
+        /// <param name="parent_id"></param>
+        /// <param name="desc"></param>
+        /// <returns></returns>
+        public MakeDirInfo mkdir(string folder_name, long parent_id = -1, string desc = "")
+        {
+            folder_name = folder_name.Replace(' ', '_');    // 文件夹名称不能包含空格
+            folder_name = name_format(folder_name);         // 去除非法字符
+            var folder_list = get_dir_list(parent_id);
+            var exist_folder = folder_list.Find(a => a.name == folder_name);
+            if (exist_folder != null)                       // 如果文件夹已经存在，直接返回
+                return new MakeDirInfo(LanZouCode.SUCCESS, exist_folder.id, exist_folder.name, exist_folder.desc);
+
+            var raw_folders = get_move_folders();
+            var post_data = new Dictionary<string, string>() {
+                    { "task", $"{2}" },
+                    { "parent_id", $"{parent_id}" },
+                    { "folder_name", $"{folder_name}" },
+                    { "folder_description", $"{desc}" },
+                };
+            var result = _post(_doupload_url, post_data);  // 创建文件夹
+            if (string.IsNullOrEmpty(result))
+                return new MakeDirInfo(LanZouCode.NETWORK_ERROR);
+            if (!result.Contains("zt\":1"))
+                return new MakeDirInfo(LanZouCode.MKDIR_ERROR);
+            Log.Warning($"Mkdir {folder_name} error, parent_id={parent_id}");
+
+            // 允许在不同路径创建同名文件夹, 移动时可通过 get_move_paths() 区分
+            foreach (var kv in get_move_folders())
+            {
+                if (!raw_folders.ContainsKey(kv.Key)) // 不在原始列表中，即新增文件夹
+                {
+                    Log.Info($"Mkdir {folder_name} #{kv.Key} in parent_id:{parent_id}");
+                    return new MakeDirInfo(LanZouCode.SUCCESS, kv.Key, kv.Value, desc);
+                }
+            }
+            Log.Warning($"Mkdir {folder_name} error, parent_id:{parent_id}");
+            return new MakeDirInfo(LanZouCode.MKDIR_ERROR);
+        }
+
+        /// <summary>
+        /// 重命名文件夹及其描述
+        /// </summary>
+        /// <param name="folder_id"></param>
+        /// <param name="folder_name"></param>
+        /// <param name="desc"></param>
+        /// <returns></returns>
+        private LanZouCode _set_dir_info(long folder_id, string folder_name, string desc = "")
+        {
+            // 不能用于重命名文件，id 无效仍然返回成功
+            folder_name = name_format(folder_name);
+            var post_data = new Dictionary<string, string>() {
+                    { "task", $"{4}" },
+                    { "folder_id", $"{folder_id}" },
+                    { "folder_name", $"{folder_name}" },
+                    { "folder_description", $"{desc}" },
+                };
+            var result = _post(_doupload_url, post_data);
+            return _normal_rescode(result);
+        }
+
+        /// <summary>
+        /// 重命名文件夹
+        /// </summary>
+        /// <param name="folder_id"></param>
+        /// <param name="folder_name"></param>
+        /// <returns></returns>
+        public LanZouCode rename_dir(long folder_id, string folder_name)
+        {
+            // 重命名文件要开会员额
+            var info = get_share_info(folder_id, false);
+            if (info.code != LanZouCode.SUCCESS)
+                return info.code;
+            return _set_dir_info(folder_id, folder_name, info.desc);
+        }
+
+        /// <summary>
+        /// 设置文件(夹)描述
+        /// </summary>
+        /// <param name="fid"></param>
+        /// <param name="desc"></param>
+        /// <param name="is_file"></param>
+        /// <returns></returns>
+        public LanZouCode set_desc(long fid, string desc = "", bool is_file = true)
+        {
+            if (is_file)
+            {
+                // 文件描述一旦设置了值，就不能再设置为空
+                var post_data = new Dictionary<string, string>() {
+                    { "task", $"{11}" },
+                    { "file_id", $"{fid}" },
+                    { "desc", $"{desc}" },
+                };
+                var result = _post(_doupload_url, post_data);
+                return _normal_rescode(result);
+            }
+            else
+            {
+                // 文件夹描述可以置空
+                var info = get_share_info(fid, false);
+                if (info.code != LanZouCode.SUCCESS)
+                    return info.code;
+                return _set_dir_info(fid, info.name, desc);
+            }
+        }
+
+        /// <summary>
+        /// 允许会员重命名文件(无法修后缀名)
+        /// </summary>
+        /// <param name="file_id"></param>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public LanZouCode rename_file(long file_id, string filename)
+        {
+            var post_data = new Dictionary<string, string>() {
+                    { "task", $"{46}" },
+                    { "file_id", $"{file_id}" },
+                    { "file_name", $"{name_format(filename)}"},
+                    { "type", $"{2}" },
+                };
+            var result = _post(_doupload_url, post_data);
+            return _normal_rescode(result);
+        }
+
+        /// <summary>
+        /// 获取全部文件夹 id-name 列表，用于移动文件至新的文件夹
+        /// </summary>
+        /// <returns></returns>
+        public Dictionary<long, string> get_move_folders()
+        {
+            // 这里 file_id 可以为任意值,不会对结果产生影响
+            var result = new Dictionary<long, string>();
+            result.Add(-1, "LanZouCloud");
+            var post_data = new Dictionary<string, string>() { { "task", $"{19}" }, { "file_id", $"{-1}" } };
+            var resp = _post(_doupload_url, post_data);
+            if (string.IsNullOrEmpty(resp) || !resp.Contains("zt\":1")) // 获取失败或者网络异常
+                return result;
+
+            var json = JsonMapper.ToObject(resp);
+            if (!json.ContainsKey("info"))  // 新注册用户无数据, info=None
+                return result;
+
+            var info = json["info"];
+            foreach (var j_folder in info)
+            {
+                var folder = (JsonData)j_folder;
+                var folder_id = long.Parse(folder["folder_id"].ToString());
+                var folder_name = folder["folder_name"].ToString();
+                result.Add(folder_id, folder_name);
+            }
+            return result;
+        }
+
+
+
+
+
+
         #endregion
     }
 }

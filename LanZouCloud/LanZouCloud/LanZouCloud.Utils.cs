@@ -58,7 +58,7 @@ namespace LanZouAPI
             return null;
         }
 
-        private static string[] available_domains = new string[]
+        private string[] available_domains = new string[]
         {
             "lanzoui.com",  // 鲁ICP备15001327号-6, 2020-06-09, SEO 排名最低
             "lanzoux.com",  // 鲁ICP备15001327号-5, 2020-06-09
@@ -70,7 +70,7 @@ namespace LanZouAPI
         /// </summary>
         /// <param name="url"></param>
         /// <returns></returns>
-        private static string[] _all_possible_urls(string url)
+        private string[] _all_possible_urls(string url)
         {
             if (url.Contains("lanzous.com"))
             {
@@ -172,9 +172,8 @@ namespace LanZouAPI
         /// </summary>
         /// <param name="time_str"></param>
         /// <returns></returns>
-        public static string time_format(string time_str)
+        public string time_format(string time_str)
         {
-            //TODO: code
             //if '秒前' in time_str or '分钟前' in time_str or '小时前' in time_str:
             //        return datetime.today().strftime('%Y-%m-%d')
             //elif '昨天' in time_str:
@@ -187,6 +186,26 @@ namespace LanZouAPI
             //else:
             //    return time_str
             return "todo time format";
+        }
+
+        /// <summary>
+        /// 去除非法字符
+        /// </summary>
+        /// <param name="name"></param>
+        public string name_format(string name)
+        {
+            // 去除其它字符集的空白符,去除重复空白字符
+            name = name.Replace("\xa0", " ").Replace("\u3000", " ").Replace("  ", " ");
+            return Regex.Replace(name, "[$%^!*<>)(+=`'\"/:;,?]", "");
+        }
+
+        private LanZouCode _normal_rescode(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return LanZouCode.NETWORK_ERROR;
+            if (!text.Contains("zt\":1"))
+                return LanZouCode.FAILED;
+            return LanZouCode.SUCCESS;
         }
     }
 }

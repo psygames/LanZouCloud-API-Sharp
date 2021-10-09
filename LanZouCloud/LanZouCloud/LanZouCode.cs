@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LanZouAPI
 {
-    public enum ResultCode
+    public enum LanZouCode
     {
         FAILED = -1,
         SUCCESS = 0,
