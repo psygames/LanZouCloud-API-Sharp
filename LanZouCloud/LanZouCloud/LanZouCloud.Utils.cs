@@ -10,13 +10,13 @@ namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private string _get_text(string url)
+        private string _get_text(string url, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.GetString(possible_url);
+                    return _session.GetString(possible_url, allowRedirect);
                 }
                 catch
                 {
@@ -26,13 +26,13 @@ namespace LanZouAPI
             return null;
         }
 
-        private HttpResponseMessage _get(string url)
+        private HttpResponseMessage _get(string url, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.Get(possible_url);
+                    return _session.Get(possible_url, allowRedirect);
                 }
                 catch
                 {
@@ -42,13 +42,13 @@ namespace LanZouAPI
             return null;
         }
 
-        private string _post(string url, Dictionary<string, string> data)
+        private string _post(string url, Dictionary<string, string> data, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.PostString(possible_url, data);
+                    return _session.PostString(possible_url, data, allowRedirect);
                 }
                 catch
                 {

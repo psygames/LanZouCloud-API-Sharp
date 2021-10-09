@@ -1,3 +1,4 @@
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,11 @@ namespace LanZouAPI
         public int downs;
         public bool has_pwd;
         public bool has_des;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
     }
 
     public class CloudFolder
@@ -24,6 +30,11 @@ namespace LanZouAPI
         public string name;
         public bool has_pwd;
         public string desc;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
     }
 
     public class CloudFileDetail
@@ -61,7 +72,6 @@ namespace LanZouAPI
             this.url = url;
         }
 
-
         public CloudFileDetail(ResultCode code, string name, string time, string size, string desc, string pwd, string url, string type, string durl)
         {
             this.code = code;
@@ -73,6 +83,11 @@ namespace LanZouAPI
             this.url = url;
             this.type = type;
             this.durl = durl;
+        }
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
         }
     }
 
@@ -96,6 +111,11 @@ namespace LanZouAPI
             this.name = name;
             this.pwd = pwd;
             this.url = url;
+        }
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
         }
     }
 }

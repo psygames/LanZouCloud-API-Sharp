@@ -76,11 +76,9 @@ namespace LanZouAPI
         /// <returns></returns>
         public ResultCode login_by_cookie(string ylogin, string phpdisk_info)
         {
-            _session.AllowRedirect(true);
             _session.AddCookie(".woozooo.com", "ylogin", ylogin);
             _session.AddCookie(".woozooo.com", "phpdisk_info", phpdisk_info);
             var html = _get_text(_account_url);
-            _session.AllowRedirect(false);
             if (string.IsNullOrEmpty(html))
                 return ResultCode.NETWORK_ERROR;
             if (html.Contains("网盘用户登录"))
@@ -370,7 +368,7 @@ namespace LanZouAPI
                 return new CloudFileDetail(ResultCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
-            var download_page = _get(fake_url);
+            var download_page = _get(fake_url, false);
             if (download_page == null || download_page.StatusCode != HttpStatusCode.Found)
                 return new CloudFileDetail(ResultCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
 
