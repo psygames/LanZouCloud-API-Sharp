@@ -33,6 +33,13 @@ namespace LanZouAPI
             SetTimeout(DEFAULT_TIMEOUT);
         }
 
+        private HttpClient GetHttpClient(Dictionary<string, string> headers = null,
+            float timeout = DEFAULT_TIMEOUT, bool allowRedirect = true, string proxy = null
+            )
+        {
+
+        }
+
         public void SetProxy(string address)
         {
             clientHandler.UseProxy = true;
