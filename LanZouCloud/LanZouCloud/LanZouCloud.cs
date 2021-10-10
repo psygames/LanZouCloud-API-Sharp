@@ -735,6 +735,8 @@ namespace LanZouAPI
         public LanZouCode down_file_by_url(string share_url, string save_dir,
             string pwd = "", bool overwrite = false, IProgress<DownloadInfo> progress = null)
         {
+            var down_info = new DownloadInfo();
+
             if (!is_file_url(share_url))
                 return LanZouCode.URL_INVALID;
             if (!Directory.Exists(save_dir))
@@ -745,9 +747,49 @@ namespace LanZouAPI
             if (info.code != LanZouCode.SUCCESS)
                 return info.code;
 
-            var resp = _get_resp(info.durl);
-            if (resp == null)
-                return LanZouCode.FAILED;
+            long? content_length;
+
+            using (var resp_first = _get_resp(info.durl))
+            {
+                if (resp_first == null)
+                    return LanZouCode.FAILED;
+
+                content_length = resp_first.Content.Headers.ContentLength;
+
+                // 对于 txt 文件, 可能出现没有 Content-Length 的情况
+                // 此时文件需要下载一次才会出现 Content-Length
+                // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
+                if (content_length == null)
+                {
+                    var _buffer = new byte[1];
+                    var max_retries = 5;  // 5 次拿不到就算了
+
+                    using (var _stream = resp_first.Content.ReadAsStream())
+                    {
+                        while (content_length == null && max_retries > 0)
+                        {
+                            max_retries -= 1;
+                            Log.Warning("Not found Content-Length in response headers");
+                            Log.Info("Read 1 byte from stream...");
+                            _stream.Read(_buffer);
+
+                            // 再请求一次试试
+                            using (var resp_ = _get_resp(info.durl, null, false, true))
+                            {
+                                if (resp_ == null)
+                                {
+                                    return LanZouCode.FAILED;
+                                }
+                                content_length = resp_.Content.Headers.ContentLength;
+                                Log.Info($"Content-Length: {content_length}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (content_length == null)
+                return LanZouCode.FAILED;  // 应该不会出现这种情况
 
             // 如果本地存在同名文件且设置了 overwrite, 则覆盖原文件
             // 否则修改下载文件路径, 自动在文件名后加序号
@@ -769,94 +811,97 @@ namespace LanZouAPI
             var tmp_file_path = file_path + ".download";  // 正在下载中的文件名
             Log.Info($"Save file to {tmp_file_path}");
 
-            // 对于 txt 文件, 可能出现没有 Content-Length 的情况
-            // 此时文件需要下载一次才会出现 Content-Length
-            // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
-
-            if (!resp.Headers.TryGetValues("Content-Length", out var _content_lens))
-            {
-                //TODO: content length
-                /*
-                data_iter = resp.iter_content(chunk_size = 1)
-                max_retries = 5  # 5 次拿不到就算了
-                while not content_length and max_retries > 0:
-                    max_retries -= 1
-                    logger.warning("Not found Content-Length in response headers")
-                    logger.debug("Read 1 byte from stream...")
-                    try:
-                        next(data_iter)  # 读取一个字节
-                    except StopIteration:
-                        logger.debug("Please wait for a moment before downloading")
-                        return LanZouCloud.FAILED
-                    resp_ = self._get(info.durl, stream = True)  # 再请求一次试试
-                    if not resp_:
-                        return LanZouCloud.FAILED
-                    content_length = resp_.headers.get('Content-Length', None)
-                    logger.debug(f"Content-Length: {content_length}")
-                */
-            }
-
-            if (_content_lens == null)
-                return LanZouCode.FAILED;  // 应该不会出现这种情况
-
             // 支持断点续传下载
             long now_size = 0;
             if (File.Exists(tmp_file_path))
                 now_size = new FileInfo(tmp_file_path).Length;  // 本地已经下载的文件大小
             var headers = new Dictionary<string, string>(_headers);
             headers.Add("Range", $"bytes={now_size}-");
-            resp = _get_resp(info.durl, headers);
 
-            if (resp == null)  // 网络异常
-                return LanZouCode.FAILED;
-            if (resp.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)  // 已经下载完成
-                return LanZouCode.SUCCESS;
+            using (var resp = _get_resp(info.durl, headers))
+            {
+                if (resp == null)  // 网络异常
+                    return LanZouCode.FAILED;
+                if (resp.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)  // 已经下载完成
+                    return LanZouCode.SUCCESS;
 
-            with open(tmp_file_path, "ab") as f:
-                file_name = os.path.basename(file_path)
-                for chunk in resp.iter_content(4096):
-                    if chunk:
-                        f.write(chunk)
-                        f.flush()
-                        now_size += len(chunk)
-                        if callback is not None:
-                            callback(file_name, int(content_length), now_size)
+                int chunk_size = 4096;
+                var chuck = new byte[chunk_size];
+                var netStream = resp.Content.ReadAsStream();
+                var fileStream = new FileStream(tmp_file_path, FileMode.Append, FileAccess.Write, FileShare.Read, chunk_size);
 
+                while (true)
+                {
+                    var readLength = netStream.Read(chuck, 0, chunk_size);
+                    if (readLength == 0) break;
+                    fileStream.Write(chuck, 0, readLength);
+                    now_size += readLength;
+                }
+
+                // 下载完成
+                netStream.Close();
+                fileStream.Close();
+            }
+
+            // 下载完成，改回正常文件名
+            File.Move(tmp_file_path, file_path);
+
+            // TODO: 大文件切割问题
             // 文件下载完成后, 检查文件尾部 512 字节数据
             // 绕过官方限制上传时, API 会隐藏文件真实信息到文件尾部
             // 这里尝试提取隐藏信息, 并截断文件尾部数据
-            os.rename(tmp_file_path, file_path)  # 下载完成，改回正常文件名
-            if os.path.getsize(file_path) > 512:  # 文件大于 512 bytes 就检查一下
-                file_info = None
+            /*
+            if (new FileInfo(file_path).Length > 512)   // 文件大于 512 bytes 就检查一下
+            {
+                // file_info = None
+                var _fs = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                _fs.Seek(-512, SeekOrigin.End);
+                var last_512_bytes = new byte[512];
+                _fs.Read(last_512_bytes);
+                _fs.Close();
+
                 with open(file_path, 'rb') as f:
                     f.seek(-512, os.SEEK_END)
                     last_512_bytes = f.read()
                     file_info = un_serialize(last_512_bytes)
-
-                # 大文件的记录文件也可以反序列化出 name,但是没有 padding 字段
-            if file_info is not None and 'padding' in file_info:
-            real_name = file_info['name']  # 解除伪装的真实文件名
-                    logger.debug(f"Find meta info: real_name={real_name}")
-                    real_path = save_dir + os.sep + real_name
-                    # 如果存在同名文件且设置了 overwrite, 删掉原文件
-                    if overwrite and os.path.exists(real_path):
-                        os.remove(real_path)
-            # 自动重命名, 文件存在就会加个序号
-                    new_file_path = auto_rename(real_path)
-                    os.rename(file_path, new_file_path)
-            # 截断最后 512 字节隐藏信息, 还原文件
-                    with open(new_file_path, 'rb+') as f:
-                        f.seek(-512, os.SEEK_END)
-                        f.truncate()
-                    file_path = new_file_path  # 保存文件重命名后真实路径
-
-            # 如果设置了下载完成的回调函数, 调用之
-            if downloaded_handler is not None:
-                downloaded_handler(os.path.abspath(file_path))
-            return LanZouCloud.SUCCESS
-
-            return LanZouCode.FAILED;
+                // 大文件的记录文件也可以反序列化出 name,但是没有 padding 字段
+                if file_info is not None and 'padding' in file_info:
+                real_name = file_info['name']  // 解除伪装的真实文件名
+                        logger.debug(f"Find meta info: real_name={real_name}")
+                        real_path = save_dir + os.sep + real_name
+                        // 如果存在同名文件且设置了 overwrite, 删掉原文件
+                        if overwrite and os.path.exists(real_path):
+                            os.remove(real_path)
+                // 自动重命名, 文件存在就会加个序号
+                        new_file_path = auto_rename(real_path)
+                        os.rename(file_path, new_file_path)
+                // 截断最后 512 字节隐藏信息, 还原文件
+                        with open(new_file_path, 'rb+') as f:
+                            f.seek(-512, os.SEEK_END)
+                            f.truncate()
+                        file_path = new_file_path  # 保存文件重命名后真实路径
+            }
+            */
+            return LanZouCode.SUCCESS;
         }
+
+        /// <summary>
+        /// 登录用户通过id下载文件(无需提取码)
+        /// </summary>
+        /// <param name="file_id"></param>
+        /// <param name="save_dir"></param>
+        /// <param name="overwrite"></param>
+        /// <param name="progress"></param>
+        /// <returns></returns>
+        public LanZouCode down_file_by_id(long file_id, string save_dir,
+            bool overwrite = false, IProgress<DownloadInfo> progress = null)
+        {
+            var info = get_share_info(file_id, true);
+            if (info.code != LanZouCode.SUCCESS)
+                return info.code;
+            return down_file_by_url(info.url, save_dir, info.pwd, overwrite, progress);
+        }
+
         #endregion
     }
 }

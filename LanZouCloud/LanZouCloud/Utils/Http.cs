@@ -95,7 +95,6 @@ namespace LanZouAPI
         public void Download(string url, string path, IProgress<long[]> progress = null, Dictionary<string, string> headers = null,
             float timeout = 0, bool allowRedirect = true, string proxy = null)
         {
-            var res = GetClient(headers, timeout, allowRedirect, proxy).GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         }
     }
 }
