@@ -27,8 +27,8 @@ namespace LanZouAPI
 
         public LanZouCloud()
         {
-            _session.SetTimeout(_timeout);
-            _session.SetHeaders(_headers);
+            _session.SetDefaultHeaders(_headers);
+            _session.SetDefaultTimeout(10);
         }
 
         #region API
@@ -76,9 +76,9 @@ namespace LanZouAPI
         /// <returns></returns>
         public LanZouCode login_by_cookie(string ylogin, string phpdisk_info)
         {
-            _session.AddCookie(".woozooo.com", "ylogin", ylogin);
-            _session.AddCookie(".woozooo.com", "phpdisk_info", phpdisk_info);
-            var html = _get_text(_account_url);
+            _session.SetCookie(".woozooo.com", "ylogin", ylogin);
+            _session.SetCookie(".woozooo.com", "phpdisk_info", phpdisk_info);
+            var html = _get(_account_url);
             if (string.IsNullOrEmpty(html))
                 return LanZouCode.NETWORK_ERROR;
             if (html.Contains("网盘用户登录"))
@@ -92,7 +92,7 @@ namespace LanZouAPI
         /// <returns></returns>
         public LanZouCode logout()
         {
-            var html = _get_text($"{_account_url}?action=logout");
+            var html = _get($"{_account_url}?action=logout");
             if (string.IsNullOrEmpty(html))
                 return LanZouCode.NETWORK_ERROR;
             if (!html.Contains("退出系统成功"))
@@ -207,7 +207,7 @@ namespace LanZouAPI
             if (!is_file_url(share_url))  // 非文件链接返回错误
                 return new CloudFileDetail(LanZouCode.URL_INVALID, pwd, share_url);
 
-            var first_page = _get_text(share_url);  // 文件分享页面(第一页)
+            var first_page = _get(share_url);  // 文件分享页面(第一页)
             if (string.IsNullOrEmpty(first_page))
                 return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
 
@@ -216,9 +216,9 @@ namespace LanZouAPI
                 // 在页面被过多访问或其他情况下，有时候会先返回一个加密的页面，其执行计算出一个acw_sc__v2后放入页面后再重新访问页面才能获得正常页面
                 // 若该页面进行了js加密，则进行解密，计算acw_sc__v2，并加入cookie
                 var acw_sc__v2 = calc_acw_sc__v2(first_page);
-                _session.SetCookies(share_url, $"acw_sc__v2={acw_sc__v2}");
+                _session.SetCookie(new Uri(share_url).Host, "acw_sc__v2", $"{acw_sc__v2}");
                 Log.Info($"Set Cookie: acw_sc__v2={acw_sc__v2}");
-                first_page = _get_text(share_url);   // 文件分享页面(第一页)
+                first_page = _get(share_url);   // 文件分享页面(第一页)
                 if (string.IsNullOrEmpty(first_page))
                     return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
             }
@@ -245,7 +245,7 @@ namespace LanZouAPI
                         { "p", $"{pwd}" },
                     };
                 var link_info_str = _post(_host_url + "/ajaxm.php", post_data);  // 保存了重定向前的链接信息和文件名
-                var second_page = _get_text(share_url);  // 再次请求文件分享页面，可以看见文件名，时间，大小等信息(第二页)
+                var second_page = _get(share_url);  // 再次请求文件分享页面，可以看见文件名，时间，大小等信息(第二页)
                 if (string.IsNullOrEmpty(link_info_str) || string.IsNullOrEmpty(second_page))
                     return new CloudFileDetail(LanZouCode.NETWORK_ERROR, pwd, share_url);
 
@@ -288,7 +288,7 @@ namespace LanZouAPI
                 var f_desc_match = Regex.Match(first_page, @"文件描述.+?<br>\n?\s*(.*?)\s*</td>");
                 f_desc = f_desc_match.Success ? f_desc_match.Groups[1].Value : "";
 
-                first_page = _get_text(_host_url + para);
+                first_page = _get(_host_url + para);
                 if (string.IsNullOrEmpty(first_page))
                     return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
                 first_page = remove_notes(first_page);
@@ -312,7 +312,7 @@ namespace LanZouAPI
                 return new CloudFileDetail(LanZouCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
-            var download_page = _get(fake_url, false);
+            var download_page = _get_resp(fake_url, null, false);
             if (download_page == null || download_page.StatusCode != HttpStatusCode.Found)
                 return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
 
@@ -745,7 +745,7 @@ namespace LanZouAPI
             if (info.code != LanZouCode.SUCCESS)
                 return info.code;
 
-            var resp = _get(info.durl);
+            var resp = _get_resp(info.durl);
             if (resp == null)
                 return LanZouCode.FAILED;
 
@@ -803,14 +803,14 @@ namespace LanZouAPI
             long now_size = 0;
             if (File.Exists(tmp_file_path))
                 now_size = new FileInfo(tmp_file_path).Length;  // 本地已经下载的文件大小
-            /*
-            headers = { **self._headers, 'Range': 'bytes=%d-' % now_size }
-                resp = _get(info.durl, stream = True, headers = headers)
+            var headers = new Dictionary<string, string>(_headers);
+            headers.Add("Range", $"bytes={now_size}-");
+            resp = _get_resp(info.durl, headers);
 
-            if resp is None:  # 网络异常
-                return LanZouCloud.FAILED
-            if resp.status_code == 416:  # 已经下载完成
-                return LanZouCloud.SUCCESS
+            if (resp == null)  // 网络异常
+                return LanZouCode.FAILED;
+            if (resp.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)  // 已经下载完成
+                return LanZouCode.SUCCESS;
 
             with open(tmp_file_path, "ab") as f:
                 file_name = os.path.basename(file_path)
@@ -822,10 +822,10 @@ namespace LanZouAPI
                         if callback is not None:
                             callback(file_name, int(content_length), now_size)
 
-            # 文件下载完成后, 检查文件尾部 512 字节数据
-            # 绕过官方限制上传时, API 会隐藏文件真实信息到文件尾部
-            # 这里尝试提取隐藏信息, 并截断文件尾部数据
-                os.rename(tmp_file_path, file_path)  # 下载完成，改回正常文件名
+            // 文件下载完成后, 检查文件尾部 512 字节数据
+            // 绕过官方限制上传时, API 会隐藏文件真实信息到文件尾部
+            // 这里尝试提取隐藏信息, 并截断文件尾部数据
+            os.rename(tmp_file_path, file_path)  # 下载完成，改回正常文件名
             if os.path.getsize(file_path) > 512:  # 文件大于 512 bytes 就检查一下
                 file_info = None
                 with open(file_path, 'rb') as f:
@@ -834,8 +834,8 @@ namespace LanZouAPI
                     file_info = un_serialize(last_512_bytes)
 
                 # 大文件的记录文件也可以反序列化出 name,但是没有 padding 字段
-                if file_info is not None and 'padding' in file_info:
-                real_name = file_info['name']  # 解除伪装的真实文件名
+            if file_info is not None and 'padding' in file_info:
+            real_name = file_info['name']  # 解除伪装的真实文件名
                     logger.debug(f"Find meta info: real_name={real_name}")
                     real_path = save_dir + os.sep + real_name
                     # 如果存在同名文件且设置了 overwrite, 删掉原文件
@@ -854,7 +854,6 @@ namespace LanZouAPI
             if downloaded_handler is not None:
                 downloaded_handler(os.path.abspath(file_path))
             return LanZouCloud.SUCCESS
-        */
 
             return LanZouCode.FAILED;
         }

@@ -8,13 +8,13 @@ namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private string _get_text(string url, bool allowRedirect = true)
+        private string _get(string url, Dictionary<string, string> headers = null, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.GetString(possible_url, allowRedirect);
+                    return _session.GetString(possible_url, headers, 0, allowRedirect);
                 }
                 catch
                 {
@@ -24,33 +24,34 @@ namespace LanZouAPI
             return null;
         }
 
-        private HttpResponseMessage _get(string url, bool allowRedirect = true)
+        private string _post(string url, Dictionary<string, string> data, Dictionary<string, string> headers = null, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.Get(possible_url, allowRedirect);
-                }
-                catch
-                {
-                    Log.Error($"Get {possible_url} failed, try another domain");
-                }
-            }
-            return null;
-        }
-
-        private string _post(string url, Dictionary<string, string> data, bool allowRedirect = true)
-        {
-            foreach (var possible_url in _all_possible_urls(url))
-            {
-                try
-                {
-                    return _session.PostString(possible_url, data, allowRedirect);
+                    return _session.PostString(possible_url, data, headers, 0, allowRedirect);
                 }
                 catch
                 {
                     Log.Error($"Post to {possible_url} ({data}) failed, try another domain");
+                }
+            }
+            return null;
+        }
+
+        private HttpResponseMessage _get_resp(string url, Dictionary<string, string> headers = null,
+            bool allowRedirect = true, bool getHeaders = false)
+        {
+            foreach (var possible_url in _all_possible_urls(url))
+            {
+                try
+                {
+                    return _session.Get(possible_url, headers, 0, allowRedirect, null, getHeaders);
+                }
+                catch
+                {
+                    Log.Error($"Get {possible_url} failed, try another domain");
                 }
             }
             return null;
@@ -112,7 +113,7 @@ namespace LanZouAPI
                 return true;
 
             // VIP 用户的 URL 很随意
-            var html = _get_text(share_url);
+            var html = _get(share_url);
             if (string.IsNullOrEmpty(share_url))
                 return false;
 
