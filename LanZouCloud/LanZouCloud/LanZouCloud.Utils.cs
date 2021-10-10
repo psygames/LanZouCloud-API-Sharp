@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 
 namespace LanZouAPI
@@ -40,14 +41,14 @@ namespace LanZouAPI
             return null;
         }
 
-        private string _upload(string url, Dictionary<string, string> data, Stream stream, string filename, string filetag = "file",
+        private string _upload(string url, Dictionary<string, string> data, Stream stream, string filename, string filetag = "file", Action<long, long> progress = null,
             Dictionary<string, string> headers = null, bool allowRedirect = true)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.PostUpload(possible_url, data, stream, filename, filetag, headers, 0, allowRedirect);
+                    return _session.PostUpload(possible_url, data, stream, filename, filetag, progress, headers, 0, allowRedirect);
                 }
                 catch
                 {
@@ -57,14 +58,14 @@ namespace LanZouAPI
             return null;
         }
 
-        private HttpResponseMessage _get_resp(string url, Dictionary<string, string> headers = null,
-            bool allowRedirect = true, bool getHeaders = false)
+        private HttpResponseMessage _get_resp(string url, Dictionary<string, string> headers = null, bool allowRedirect = true,
+            bool headers_only = false)
         {
             foreach (var possible_url in _all_possible_urls(url))
             {
                 try
                 {
-                    return _session.Get(possible_url, headers, 0, allowRedirect, null, getHeaders);
+                    return _session.Get(possible_url, headers, 0, allowRedirect, null, headers_only);
                 }
                 catch
                 {

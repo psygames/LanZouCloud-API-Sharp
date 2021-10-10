@@ -240,4 +240,25 @@ namespace LanZouAPI
             return JsonMapper.ToJson(this);
         }
     }
+
+    public class UploadInfo
+    {
+        public enum State
+        {
+            Start,
+            Ready,
+            Uploading,
+            Finish,
+        }
+
+        public State state;
+        public long current;
+        public long total;
+        public string filename;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
 }

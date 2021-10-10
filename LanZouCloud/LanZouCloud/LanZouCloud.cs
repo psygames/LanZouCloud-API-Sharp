@@ -749,22 +749,25 @@ namespace LanZouAPI
 
             long? content_length;
 
-            using (var resp_first = _get_resp(info.durl))
+            using (var resp_first = _get_resp(info.durl, null, false, true))
             {
                 if (resp_first == null)
                     return LanZouCode.FAILED;
-
                 content_length = resp_first.Content.Headers.ContentLength;
+            }
 
-                // 对于 txt 文件, 可能出现没有 Content-Length 的情况
-                // 此时文件需要下载一次才会出现 Content-Length
-                // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
-                if (content_length == null)
+
+            // 对于 txt 文件, 可能出现没有 Content-Length 的情况
+            // 此时文件需要下载一次才会出现 Content-Length
+            // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
+            if (content_length == null)
+            {
+                using (var resp_snd = _get_resp(info.durl, null))
                 {
                     var _buffer = new byte[1];
                     var max_retries = 5;  // 5 次拿不到就算了
 
-                    using var _stream = resp_first.Content.ReadAsStreamAsync().Result;
+                    using var _stream = resp_snd.Content.ReadAsStreamAsync().Result;
                     while (content_length == null && max_retries > 0)
                     {
                         max_retries -= 1;
@@ -885,12 +888,17 @@ namespace LanZouAPI
         /// <param name="overwrite"></param>
         /// <param name="progress"></param>
         public LanZouCode upload_file(string file_path, long folder_id = -1, bool overwrite = true,
-            IProgress<DownloadInfo> progress = null)
+            Action<UploadInfo> progress = null)
         {
+            var up_info = new UploadInfo() { state = UploadInfo.State.Start, filename = Path.GetFileName(file_path) };
+            progress?.Invoke(up_info);
+
             if (!File.Exists(file_path))
                 return LanZouCode.PATH_ERROR;
 
-            if (new FileInfo(file_path).Length > _max_size * 1024 * 1024)
+            var file_size = new FileInfo(file_path).Length;
+
+            if (file_size > _max_size * 1024 * 1024)
             {
                 return LanZouCode.OFFICIAL_LIMITED;
             }
@@ -913,6 +921,10 @@ namespace LanZouAPI
                 }
             }
 
+            up_info.total = file_size;
+            up_info.state = UploadInfo.State.Ready;
+            progress?.Invoke(up_info);
+
             Log.Info($"Upload file_path:{file_path} to folder_id:{folder_id}");
 
             var post_data = _post_data("task", $"{1}", "folder_id", $"{folder_id}", "id", "WU_FILE_0", "name", $"{filename}");
@@ -920,14 +932,27 @@ namespace LanZouAPI
             string result;
             using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                result = _upload("https://pc.woozooo.com/fileup.php", post_data, fileStream, filename, "upload_file");
+                Action<long, long> _progress = null;
+                if (progress != null)
+                {
+                    _progress = (current, total) =>
+                    {
+                        up_info.current = current;
+                        progress?.Invoke(up_info);
+                    };
+                }
+
+                up_info.state = UploadInfo.State.Uploading;
+                progress?.Invoke(up_info);
+                result = _upload("https://pc.woozooo.com/fileup.php", post_data, fileStream, filename, "upload_file", _progress);
             }
 
             var code = _get_rescode(result);
             if (code != LanZouCode.SUCCESS)
                 return code;
 
-            var json = JsonMapper.ToObject(result);
+            up_info.state = UploadInfo.State.Finish;
+            progress?.Invoke(up_info);
 
             return LanZouCode.SUCCESS;
         }

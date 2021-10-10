@@ -36,8 +36,11 @@ namespace ConsoleApp1
             Console.WriteLine(download);
 
             // upload
-            // var upload = lzy.upload_file(@"C:\Users\yinlong\Downloads\ToDesk_Lite.exe");
-            // Console.WriteLine(upload);
+            var upload = lzy.upload_file(@"download/ToDesk_Lite.exe", -1, false, _info =>
+            {
+                Console.WriteLine(_info);
+            });
+            Console.WriteLine(upload);
 
             Console.WriteLine("Test Finish!");
         }

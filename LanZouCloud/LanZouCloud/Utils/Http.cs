@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace LanZouAPI
@@ -68,10 +69,22 @@ namespace LanZouAPI
         }
 
         public HttpResponseMessage Get(string url, Dictionary<string, string> headers = null,
-            float timeout = 0, bool allowRedirect = true, string proxy = null, bool getHeaders = false)
+            float timeout = 0, bool allowRedirect = true, string proxy = null, bool headersOnly = false)
         {
             return GetClient(headers, timeout, allowRedirect, proxy).GetAsync(url,
-                getHeaders ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead).Result;
+                headersOnly ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead).Result;
+        }
+
+        public HttpContentHeaders GetHeaders(string url, Dictionary<string, string> headers = null,
+            float timeout = 0, bool allowRedirect = true, string proxy = null)
+        {
+            return GetClient(headers, timeout, allowRedirect, proxy).GetAsync(url, HttpCompletionOption.ResponseHeadersRead).Result.Content.Headers;
+        }
+
+        public Stream GetStream(string url, Dictionary<string, string> headers = null,
+            float timeout = 0, bool allowRedirect = true, string proxy = null)
+        {
+            return GetClient(headers, timeout, allowRedirect, proxy).GetStreamAsync(url).Result;
         }
 
         public string GetString(string url, Dictionary<string, string> headers = null,
@@ -88,15 +101,25 @@ namespace LanZouAPI
                 PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
         }
 
-        public string PostUpload(string url, Dictionary<string, string> data, Stream stream, string fileName, string filetag = "file",
+        public string PostUpload(string url, Dictionary<string, string> data, Stream stream, string fileName, string filetag = "file", Action<long, long> progress = null,
             Dictionary<string, string> headers = null, float timeout = 0, bool allowRedirect = true, string proxy = null)
         {
-            var content = new MultipartFormDataContent();
+            var _content = new MultipartFormDataContent();
             foreach (var item in data)
             {
-                content.Add(new StringContent(item.Value), item.Key);
+                _content.Add(new StringContent(item.Value), item.Key);
             }
-            content.Add(new StreamContent(stream), filetag, fileName);
+            _content.Add(new StreamContent(stream), filetag, fileName);
+
+            HttpContent content;
+            if (progress != null)
+            {
+                content = new ProgressableStreamContent(_content, stream, progress);
+            }
+            else
+            {
+                content = _content;
+            }
 
             return GetClient(headers, timeout, allowRedirect, proxy).
                 PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
@@ -110,20 +133,17 @@ namespace LanZouAPI
 
     internal class ProgressableStreamContent : HttpContent
     {
-
-        /// <summary> 
-        /// Lets keep buffer of 20kb 
-        /// </summary> 
-        private const int defaultBufferSize = 5 * 4096;
+        private const int defaultBufferSize = 4096;
 
         private HttpContent content;
         private int bufferSize;
-        //private bool contentConsumed; 
         private Action<long, long> progress;
+        private Stream contentStream;
+        private bool contentConsumed;
 
-        public ProgressableStreamContent(HttpContent content, Action<long, long> progress) : this(content, defaultBufferSize, progress) { }
+        public ProgressableStreamContent(HttpContent content, Stream stream, Action<long, long> progress) : this(content, stream, defaultBufferSize, progress) { }
 
-        public ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
+        public ProgressableStreamContent(HttpContent content, Stream stream, int bufferSize, Action<long, long> progress)
         {
             if (content == null)
             {
@@ -135,6 +155,7 @@ namespace LanZouAPI
             }
 
             this.content = content;
+            this.contentStream = stream;
             this.bufferSize = bufferSize;
             this.progress = progress;
 
@@ -146,32 +167,23 @@ namespace LanZouAPI
 
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
         {
+            PrepareContent();
             return Task.Run(async () =>
             {
-                var buffer = new Byte[this.bufferSize];
-                long size;
-                TryComputeLength(out size);
+                var buffer = new byte[bufferSize];
+                TryComputeLength(out var size);
                 var uploaded = 0;
-
-
                 using (var sinput = await content.ReadAsStreamAsync())
                 {
                     while (true)
                     {
-                        var length = sinput.Read(buffer, 0, buffer.Length);
-                        if (length <= 0) break;
-
-                        //downloader.Uploaded = uploaded += length; 
+                        var length = sinput.Read(buffer, 0, bufferSize);
+                        if (length == 0) break;
+                        stream.Write(buffer, 0, length);
                         uploaded += length;
                         progress?.Invoke(uploaded, size);
-
-                        //System.Diagnostics.Debug.WriteLine($"Bytes sent {uploaded} of {size}"); 
-
-                        stream.Write(buffer, 0, length);
-                        stream.Flush();
                     }
                 }
-                stream.Flush();
             });
         }
 
@@ -190,5 +202,24 @@ namespace LanZouAPI
             base.Dispose(disposing);
         }
 
+        private void PrepareContent()
+        {
+            if (contentConsumed)
+            {
+                // If the content needs to be written to a target stream a 2nd time, then the stream must support
+                // seeking (e.g. a FileStream), otherwise the stream can't be copied a second time to a target 
+                // stream (e.g. a NetworkStream).
+                if (contentStream.CanSeek)
+                {
+                    contentStream.Position = 0;
+                }
+                else
+                {
+                    throw new InvalidOperationException("SR.net_http_content_stream_already_read");
+                }
+            }
+
+            contentConsumed = true;
+        }
     }
 }
