@@ -70,28 +70,22 @@ namespace LanZouAPI
         public HttpResponseMessage Get(string url, Dictionary<string, string> headers = null,
             float timeout = 0, bool allowRedirect = true, string proxy = null, bool getHeaders = false)
         {
-            var res = GetClient(headers, timeout, allowRedirect, proxy).GetAsync(url,
-                getHeaders ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead);
-            res.Wait();
-            return res.Result;
+            return GetClient(headers, timeout, allowRedirect, proxy).GetAsync(url,
+                getHeaders ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead).Result;
         }
 
         public string GetString(string url, Dictionary<string, string> headers = null,
             float timeout = 0, bool allowRedirect = true, string proxy = null)
         {
-            var res = GetClient(headers, timeout, allowRedirect, proxy).GetStringAsync(url);
-            res.Wait();
-            return res.Result;
+            return GetClient(headers, timeout, allowRedirect, proxy).GetStringAsync(url).Result;
         }
 
         public string PostString(string url, Dictionary<string, string> data,
             Dictionary<string, string> headers = null, float timeout = 0, bool allowRedirect = true, string proxy = null)
         {
             var content = new FormUrlEncodedContent(data);
-            var res = GetClient(headers, timeout, allowRedirect, proxy).PostAsync(url, content);
-            res.Wait();
-            var text = res.Result.Content.ReadAsStringAsync();
-            return text.Result;
+            return GetClient(headers, timeout, allowRedirect, proxy).
+                PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
         }
 
         public string PostUpload(string url, Dictionary<string, string> data, Stream stream, string fileName, string filetag = "file",
@@ -103,10 +97,9 @@ namespace LanZouAPI
                 content.Add(new StringContent(item.Value), item.Key);
             }
             content.Add(new StreamContent(stream), filetag, fileName);
-            var res = GetClient(headers, timeout, allowRedirect, proxy).PostAsync(url, content);
-            res.Wait();
-            var text = res.Result.Content.ReadAsStringAsync();
-            return text.Result;
+
+            return GetClient(headers, timeout, allowRedirect, proxy).
+                PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
         }
 
         public void Download(string url, string path, IProgress<long[]> progress = null, Dictionary<string, string> headers = null,

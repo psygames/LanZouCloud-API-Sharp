@@ -316,9 +316,7 @@ namespace LanZouAPI
                 return new CloudFileDetail(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
 
             // download_page.encoding = 'utf-8'
-            var task = download_page.Content.ReadAsStringAsync();
-            task.Wait();
-            var download_page_html = remove_notes(task.Result);
+            var download_page_html = remove_notes(download_page.Content.ReadAsStringAsync().Result);
             string direct_url;
             if (!download_page_html.Contains("网络异常"))  // 没有遇到验证码
             {
@@ -326,6 +324,7 @@ namespace LanZouAPI
             }
             else // 遇到验证码，验证后才能获取下载直链
             {
+                Log.Warning($"Get direct url need verify code, force sleep 2 seconds.");
                 var file_token = Regex.Match(download_page_html, "'file':'(.+?)'").Value;
                 var file_sign = Regex.Match(download_page_html, "'sign':'(.+?)'").Value;
                 var check_api = "https://vip.d0.baidupan.com/file/ajax.php";
@@ -428,9 +427,9 @@ namespace LanZouAPI
             }
             else
             {
-                url = f_info["new_url"].ToString();  // 文件夹的分享链接可以直接拿到
-                name = f_info["name"].ToString();  // 文件夹名
-                desc = f_info["des"].ToString();  // 文件夹描述
+                url = f_info["new_url"].ToString();     // 文件夹的分享链接可以直接拿到
+                name = f_info["name"].ToString();       // 文件夹名
+                desc = f_info["des"].ToString();        // 文件夹描述
             }
             return new ShareInfo(LanZouCode.SUCCESS, name, url, desc, pwd);
         }
@@ -733,10 +732,10 @@ namespace LanZouAPI
         /// <param name="progress">用于显示下载进度</param>
         /// <returns></returns>
         public LanZouCode down_file_by_url(string share_url, string save_dir,
-            string pwd = "", bool overwrite = false, IProgress<DownloadInfo> progress = null)
+            string pwd = "", bool overwrite = false, Action<DownloadInfo> progress = null)
         {
             var down_info = new DownloadInfo() { state = DownloadInfo.State.Start, share_url = share_url };
-            progress?.Report(down_info);
+            progress?.Invoke(down_info);
 
             if (!is_file_url(share_url))
                 return LanZouCode.URL_INVALID;
@@ -765,29 +764,22 @@ namespace LanZouAPI
                     var _buffer = new byte[1];
                     var max_retries = 5;  // 5 次拿不到就算了
 
-                    var task = resp_first.Content.ReadAsStreamAsync();
-                    task.Wait();
-                    var _stream = task.Result;
-                    using (_stream)
+                    using var _stream = resp_first.Content.ReadAsStreamAsync().Result;
+                    while (content_length == null && max_retries > 0)
                     {
-                        while (content_length == null && max_retries > 0)
-                        {
-                            max_retries -= 1;
-                            Log.Warning("Not found Content-Length in response headers");
-                            Log.Info("Read 1 byte from stream...");
-                            _stream.Read(_buffer, 0, 1);
+                        max_retries -= 1;
+                        Log.Warning("Not found Content-Length in response headers");
+                        Log.Info("Read 1 byte from stream...");
+                        _stream.Read(_buffer, 0, 1);
 
-                            // 再请求一次试试
-                            using (var resp_ = _get_resp(info.durl, null, false, true))
-                            {
-                                if (resp_ == null)
-                                {
-                                    return LanZouCode.FAILED;
-                                }
-                                content_length = resp_.Content.Headers.ContentLength;
-                                Log.Info($"Content-Length: {content_length}");
-                            }
+                        // 再请求一次试试
+                        using var resp_ = _get_resp(info.durl, null, false, true);
+                        if (resp_ == null)
+                        {
+                            return LanZouCode.FAILED;
                         }
+                        content_length = resp_.Content.Headers.ContentLength;
+                        Log.Info($"Content-Length: {content_length}");
                     }
                 }
             }
@@ -815,7 +807,7 @@ namespace LanZouAPI
             var filename = Path.GetFileName(file_path);
             down_info.state = DownloadInfo.State.Ready;
             down_info.filename = filename;
-            progress?.Report(down_info);
+            progress?.Invoke(down_info);
 
             var tmp_file_path = file_path + ".download";  // 正在下载中的文件名
             Log.Info($"Save file to {tmp_file_path}");
@@ -836,23 +828,21 @@ namespace LanZouAPI
 
                 int chunk_size = 4096;
                 var chunk = new byte[chunk_size];
-                var _task = resp.Content.ReadAsStreamAsync();
-                _task.Wait();
-                var netStream = _task.Result;
+                var netStream = resp.Content.ReadAsStreamAsync().Result;
                 var fileStream = new FileStream(tmp_file_path, FileMode.Append, FileAccess.Write, FileShare.Read, chunk_size);
 
                 down_info.state = DownloadInfo.State.Downloading;
 
                 while (true)
                 {
-                    var readLength = netStream.Read(chunk, 0, chunk_size);
+                    var readLength = netStream.ReadAsync(chunk, 0, chunk_size).Result;
                     if (readLength == 0) break;
                     fileStream.Write(chunk, 0, readLength);
                     now_size += readLength;
 
                     down_info.current = now_size;
                     down_info.total = (long)content_length;
-                    progress?.Report(down_info);
+                    progress?.Invoke(down_info);
                 }
 
                 // 下载完成
@@ -864,7 +854,7 @@ namespace LanZouAPI
             File.Move(tmp_file_path, file_path);
 
             down_info.state = DownloadInfo.State.Finish;
-            progress?.Report(down_info);
+            progress?.Invoke(down_info);
 
             return LanZouCode.SUCCESS;
         }
@@ -878,7 +868,7 @@ namespace LanZouAPI
         /// <param name="progress"></param>
         /// <returns></returns>
         public LanZouCode down_file_by_id(long file_id, string save_dir,
-            bool overwrite = false, IProgress<DownloadInfo> progress = null)
+            bool overwrite = false, Action<DownloadInfo> progress = null)
         {
             var info = get_share_info(file_id, true);
             if (info.code != LanZouCode.SUCCESS)
