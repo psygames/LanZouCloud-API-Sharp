@@ -221,6 +221,23 @@ namespace LanZouAPI
 
     public class DownloadInfo
     {
+        public enum State
+        {
+            Start,
+            Ready,
+            Downloading,
+            Finish,
+        }
 
+        public State state;
+        public long current;
+        public long total;
+        public string filename;
+        public string share_url;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
     }
 }

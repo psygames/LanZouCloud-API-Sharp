@@ -18,9 +18,14 @@ namespace ConsoleApp1
             Console.WriteLine(dirs[0]);
             var f_info = lzy.get_file_info_by_id(files[0].id);
             Console.WriteLine(f_info);
-            var download = lzy.down_file_by_id(files[0].id, "download");
+            var download_progress = new Progress<DownloadInfo>();
+            download_progress.ProgressChanged += (s, info) =>
+            {
+                Console.WriteLine(info);
+            };
+            var download = lzy.down_file_by_id(files[0].id, "download", false, download_progress);
             Console.WriteLine(download);
-            var upload = lzy._upload_small_file(@"C:\Users\yinlong\Downloads\ToDesk_Lite.exe");
+            var upload = lzy.upload_file(@"C:\Users\yinlong\Downloads\ToDesk_Lite.exe");
             Console.WriteLine(upload);
 
             Console.WriteLine("Finish!");
