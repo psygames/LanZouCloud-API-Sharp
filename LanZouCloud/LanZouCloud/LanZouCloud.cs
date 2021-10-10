@@ -764,14 +764,17 @@ namespace LanZouAPI
                     var _buffer = new byte[1];
                     var max_retries = 5;  // 5 次拿不到就算了
 
-                    using (var _stream = resp_first.Content.ReadAsStream())
+                    var task = resp_first.Content.ReadAsStreamAsync();
+                    task.Wait();
+                    var _stream = task.Result;
+                    using (_stream)
                     {
                         while (content_length == null && max_retries > 0)
                         {
                             max_retries -= 1;
                             Log.Warning("Not found Content-Length in response headers");
                             Log.Info("Read 1 byte from stream...");
-                            _stream.Read(_buffer);
+                            _stream.Read(_buffer, 0, 1);
 
                             // 再请求一次试试
                             using (var resp_ = _get_resp(info.durl, null, false, true))
@@ -827,7 +830,9 @@ namespace LanZouAPI
 
                 int chunk_size = 4096;
                 var chuck = new byte[chunk_size];
-                var netStream = resp.Content.ReadAsStream();
+                var _task = resp.Content.ReadAsStreamAsync();
+                _task.Wait();
+                var netStream = _task.Result;
                 var fileStream = new FileStream(tmp_file_path, FileMode.Append, FileAccess.Write, FileShare.Read, chunk_size);
 
                 while (true)
@@ -901,6 +906,61 @@ namespace LanZouAPI
                 return info.code;
             return down_file_by_url(info.url, save_dir, info.pwd, overwrite, progress);
         }
+
+
+        /// <summary>
+        /// 绕过格式限制上传不超过 max_size 的文件
+        /// </summary>
+        /// <param name="file_path"></param>
+        /// <param name="folder_id"></param>
+        /// <param name="overwrite"></param>
+        /// <param name="progress"></param>
+        public LanZouCode _upload_small_file(string file_path, long folder_id = -1, bool overwrite = true, IProgress<DownloadInfo> progress = null)
+        {
+            if (!File.Exists(file_path))
+                return LanZouCode.PATH_ERROR;
+
+            if (!is_name_valid(file_path))      // 不允许上传的格式
+            {
+                // if (_limit_mode)                // 不允许绕过官方限制
+                return LanZouCode.OFFICIAL_LIMITED;
+
+                // TODO: no limit
+                // file_path = let_me_upload(file_path);  // 添加了报尾的新文件
+                // need_delete = true;
+            }
+
+            // 文件已经存在同名文件就删除
+            var filename = name_format(Path.GetFileName(file_path));
+            if (overwrite)
+            {
+                var file_list = get_file_list(folder_id);
+                var same_files = file_list.FindAll(a => a.name == filename);
+                foreach (var file in same_files)
+                {
+                    delete(file.id, true);
+                }
+            }
+
+            Log.Info($"Upload file_path:{file_path} to folder_id:{folder_id}");
+
+            var post_data = _post_data("task", $"{1}", "folder_id", $"{folder_id}", "id", "WU_FILE_0", "name", $"{filename}");
+
+            string result;
+            using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                result = _upload("https://pc.woozooo.com/fileup.php", post_data, fileStream, filename, "upload_file");
+            }
+
+            var code = _get_rescode(result);
+            if (code != LanZouCode.SUCCESS)
+                return code;
+
+            var json = JsonMapper.ToObject(result);
+
+            return LanZouCode.SUCCESS;
+        }
+
 
         #endregion
     }

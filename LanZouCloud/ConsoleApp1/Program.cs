@@ -20,6 +20,8 @@ namespace ConsoleApp1
             Console.WriteLine(f_info);
             var download = lzy.down_file_by_id(files[0].id, "download");
             Console.WriteLine(download);
+            var upload = lzy._upload_small_file(@"C:\Users\yinlong\Downloads\ToDesk_Lite.exe");
+            Console.WriteLine(upload);
 
             Console.WriteLine("Finish!");
         }
