@@ -138,24 +138,13 @@ namespace LanZouAPI
         private HttpContent content;
         private int bufferSize;
         private Action<long, long> progress;
-        private Stream contentStream;
-        private bool contentConsumed;
 
-        public ProgressableStreamContent(HttpContent content, Stream stream, Action<long, long> progress) : this(content, stream, defaultBufferSize, progress) { }
+        public ProgressableStreamContent(HttpContent content, Stream stream, Action<long, long> progress)
+            : this(content, stream, defaultBufferSize, progress) { }
 
         public ProgressableStreamContent(HttpContent content, Stream stream, int bufferSize, Action<long, long> progress)
         {
-            if (content == null)
-            {
-                throw new ArgumentNullException("content");
-            }
-            if (bufferSize <= 0)
-            {
-                throw new ArgumentOutOfRangeException("bufferSize");
-            }
-
             this.content = content;
-            this.contentStream = stream;
             this.bufferSize = bufferSize;
             this.progress = progress;
 
@@ -167,7 +156,6 @@ namespace LanZouAPI
 
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
         {
-            PrepareContent();
             return Task.Run(async () =>
             {
                 var buffer = new byte[bufferSize];
@@ -200,26 +188,6 @@ namespace LanZouAPI
                 content.Dispose();
             }
             base.Dispose(disposing);
-        }
-
-        private void PrepareContent()
-        {
-            if (contentConsumed)
-            {
-                // If the content needs to be written to a target stream a 2nd time, then the stream must support
-                // seeking (e.g. a FileStream), otherwise the stream can't be copied a second time to a target 
-                // stream (e.g. a NetworkStream).
-                if (contentStream.CanSeek)
-                {
-                    contentStream.Position = 0;
-                }
-                else
-                {
-                    throw new InvalidOperationException("SR.net_http_content_stream_already_read");
-                }
-            }
-
-            contentConsumed = true;
         }
     }
 }
