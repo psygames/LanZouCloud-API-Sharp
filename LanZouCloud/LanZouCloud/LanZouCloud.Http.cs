@@ -107,21 +107,6 @@ namespace LanZouAPI
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private CookieContainer cookieContainer = new CookieContainer();
         private void _set_cookie(string domain, string name, string value)
         {

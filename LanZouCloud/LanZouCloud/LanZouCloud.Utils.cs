@@ -49,7 +49,7 @@ namespace LanZouAPI
             return false;
         }
 
-        public string calc_acw_sc__v2(string html_text)
+        private string calc_acw_sc__v2(string html_text)
         {
             var arg1 = Regex.Match(html_text, "arg1='([0-9A-Z]+)'");
             var arg1str = "";
@@ -60,7 +60,7 @@ namespace LanZouAPI
         }
 
         // 参考自 https://zhuanlan.zhihu.com/p/228507547
-        public string unsbox(string str_arg)
+        private string unsbox(string str_arg)
         {
             int[] v1 = new int[]{15, 35, 29, 24, 33, 16, 1, 38, 10, 9, 19, 31, 40, 27, 22, 23,
                 25, 13, 6, 11, 39, 18, 20, 8, 14, 21, 32, 26, 2, 30, 7, 4, 17, 5, 3, 28, 34, 37, 12, 36 };
@@ -78,7 +78,7 @@ namespace LanZouAPI
             return res;
         }
 
-        public string hex_xor(string str_arg, string args)
+        private string hex_xor(string str_arg, string args)
         {
             var res = "";
             for (int idx = 0; idx < Math.Min(str_arg.Length, args.Length); idx += 2)
@@ -116,7 +116,7 @@ namespace LanZouAPI
         /// 去除非法字符
         /// </summary>
         /// <param name="name"></param>
-        public string name_format(string name)
+        private string name_format(string name)
         {
             // 去除其它字符集的空白符,去除重复空白字符
             name = name.Replace("\xa0", " ").Replace("\u3000", " ").Replace("  ", " ");
