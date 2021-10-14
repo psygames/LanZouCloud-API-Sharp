@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -206,6 +207,19 @@ namespace LanZouAPI
         {
             var ext = Path.GetExtension(filename).Substring(1);
             return valid_suffix_list.Contains(ext);
+        }
+
+        private Stopwatch _watch_begin()
+        {
+            var watch = new Stopwatch();
+            watch.Start();
+            return watch;
+        }
+
+        private void _watch_end(string title,Stopwatch watch)
+        {
+            watch.Stop();
+            LogInfo($"[{title}] cost: {watch.Elapsed}");
         }
     }
 }
