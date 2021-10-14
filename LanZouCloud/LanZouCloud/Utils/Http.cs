@@ -125,10 +125,6 @@ namespace LanZouAPI
                 PostAsync(url, content).Result.Content.ReadAsStringAsync().Result;
         }
 
-        public void Download(string url, string path, IProgress<long[]> progress = null, Dictionary<string, string> headers = null,
-            float timeout = 0, bool allowRedirect = true, string proxy = null)
-        {
-        }
     }
 
     internal class ProgressableStreamContent : HttpContent

@@ -29,7 +29,8 @@ namespace LanZouAPI
             using (var client = _get_client())
             {
                 var content = new FormUrlEncodedContent(data);
-                text = await client.PostAsync(url, content).Result.Content.ReadAsStringAsync();
+                var resp = await client.PostAsync(url, content);
+                text = await resp.Content.ReadAsStringAsync();
             }
             return text;
         }
@@ -46,6 +47,65 @@ namespace LanZouAPI
         }
 
 
+        internal class ProgressableStreamContent : HttpContent
+        {
+            private const int defaultBufferSize = 4096;
+
+            private HttpContent content;
+            private int bufferSize;
+            private Action<long, long> progress;
+
+            public ProgressableStreamContent(HttpContent content, Action<long, long> progress)
+                : this(content, defaultBufferSize, progress) { }
+
+            public ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
+            {
+                this.content = content;
+                this.bufferSize = bufferSize;
+                this.progress = progress;
+
+                foreach (var h in content.Headers)
+                {
+                    this.Headers.Add(h.Key, h.Value);
+                }
+            }
+
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+                return Task.Run(async () =>
+                {
+                    var buffer = new byte[bufferSize];
+                    TryComputeLength(out var size);
+                    var uploaded = 0;
+                    using (var sinput = await content.ReadAsStreamAsync())
+                    {
+                        while (true)
+                        {
+                            var length = sinput.Read(buffer, 0, bufferSize);
+                            if (length == 0) break;
+                            stream.Write(buffer, 0, length);
+                            uploaded += length;
+                            progress?.Invoke(uploaded, size);
+                        }
+                    }
+                });
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = content.Headers.ContentLength.GetValueOrDefault();
+                return true;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    content.Dispose();
+                }
+                base.Dispose(disposing);
+            }
+        }
 
 
 

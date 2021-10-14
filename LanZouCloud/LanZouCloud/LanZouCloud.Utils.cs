@@ -4,44 +4,12 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private string _post(string url, Dictionary<string, string> data, Dictionary<string, string> headers = null, bool allowRedirect = true)
-        {
-            foreach (var possible_url in _all_possible_urls(url))
-            {
-                try
-                {
-                    return _session.PostString(possible_url, data, headers, 0, allowRedirect);
-                }
-                catch
-                {
-                    Log.Error($"Post to {possible_url} ({data}) failed, try another domain");
-                }
-            }
-            return null;
-        }
-
-        private string _upload(string url, Dictionary<string, string> data, Stream stream, string filename, string filetag = "file", Action<long, long> progress = null,
-            Dictionary<string, string> headers = null, bool allowRedirect = true)
-        {
-            foreach (var possible_url in _all_possible_urls(url))
-            {
-                try
-                {
-                    return _session.PostUpload(possible_url, data, stream, filename, filetag, progress, headers, 0, allowRedirect);
-                }
-                catch
-                {
-                    Log.Error($"Post to {possible_url} ({data}) failed, try another domain");
-                }
-            }
-            return null;
-        }
-
         /// <summary>
         /// 删除网页的注释
         /// </summary>
@@ -61,7 +29,7 @@ namespace LanZouAPI
         /// </summary>
         /// <param name="share_url"></param>
         /// <returns></returns>
-        private bool is_file_url(string share_url)
+        private async Task<bool> is_file_url(string share_url)
         {
             var base_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[six].com/.+";  // 子域名可个性化设置或者不存在
             var user_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[six].com/i[a-zA-Z0-9]{5,}/?";  // 普通用户 URL 规则
@@ -71,7 +39,7 @@ namespace LanZouAPI
                 return true;
 
             // VIP 用户的 URL 很随意
-            var html = _get(share_url);
+            var html = await _get_text(share_url);
             if (string.IsNullOrEmpty(share_url))
                 return false;
 
@@ -79,7 +47,6 @@ namespace LanZouAPI
             if (Regex.Match(html, "class=\"fileinfo\"|id=\"file\"|文件描述").Success)
                 return true;
             return false;
-
         }
 
         public string calc_acw_sc__v2(string html_text)
