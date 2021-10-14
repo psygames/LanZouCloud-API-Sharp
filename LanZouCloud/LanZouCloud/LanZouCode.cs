@@ -15,5 +15,6 @@ namespace LanZouAPI
         NETWORK_ERROR = 9,
         CAPTCHA_ERROR = 10,
         OFFICIAL_LIMITED = 11,
+        NOT_LOGIN = 12,
     }
 }

@@ -1,4 +1,5 @@
 using LitJson;
+using System.Collections.Generic;
 
 namespace LanZouAPI
 {
@@ -19,12 +20,34 @@ namespace LanZouAPI
         }
     }
 
+    public class CloudFileList
+    {
+        public LanZouCode code;
+        public List<CloudFile> files;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
+
     public class CloudFolder
     {
         public long id;
         public string name;
         public bool has_pwd;
         public string desc;
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
+
+    public class CloudFolderList
+    {
+        public LanZouCode code;
+        public List<CloudFolder> folders;
 
         public override string ToString()
         {
@@ -221,6 +244,47 @@ namespace LanZouAPI
 
     public class DownloadInfo
     {
+        public LanZouCode code;
+        public string filename;
+        public string file_path;
+        public string share_url;
+        public bool is_continue;
+
+        public DownloadInfo(LanZouCode code)
+        {
+            this.code = code;
+        }
+
+        public DownloadInfo(LanZouCode code, string share_url)
+        {
+            this.code = code;
+            this.share_url = share_url;
+        }
+
+        public DownloadInfo(LanZouCode code, string share_url, string filename)
+        {
+            this.code = code;
+            this.share_url = share_url;
+            this.filename = filename;
+        }
+
+        public DownloadInfo(LanZouCode code, string share_url, string filename, string file_path, bool is_continue)
+        {
+            this.code = code;
+            this.share_url = share_url;
+            this.filename = filename;
+            this.file_path = file_path;
+            this.is_continue = is_continue;
+        }
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
+
+    public class DownloadProgressInfo
+    {
         public enum State
         {
             Start,
@@ -234,6 +298,7 @@ namespace LanZouAPI
         public long total;
         public string filename;
         public string share_url;
+        public bool is_continue;
 
         public override string ToString()
         {
@@ -242,6 +307,36 @@ namespace LanZouAPI
     }
 
     public class UploadInfo
+    {
+        public LanZouCode code;
+        public string filename;
+        public string file_path;
+        public long file_id;
+        public string share_url;
+
+        public UploadInfo(LanZouCode code, string filename, string file_path)
+        {
+            this.code = code;
+            this.filename = filename;
+            this.file_path = file_path;
+        }
+
+        public UploadInfo(LanZouCode code, string filename, string file_path, long file_id, string share_url)
+        {
+            this.code = code;
+            this.filename = filename;
+            this.file_path = file_path;
+            this.file_id = file_id;
+            this.share_url = share_url;
+        }
+
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
+
+    public class UploadProgressInfo
     {
         public enum State
         {

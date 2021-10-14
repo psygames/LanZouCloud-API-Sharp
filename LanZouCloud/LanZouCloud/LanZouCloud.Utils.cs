@@ -132,6 +132,8 @@ namespace LanZouAPI
         {
             if (string.IsNullOrEmpty(text))
                 return LanZouCode.NETWORK_ERROR;
+            if (text.Contains("info\":\"login not"))
+                return LanZouCode.NOT_LOGIN;
             if (!text.Contains("zt\":1"))
                 return LanZouCode.FAILED;
             return LanZouCode.SUCCESS;
@@ -177,7 +179,7 @@ namespace LanZouAPI
                 var current = $"{fname_no_ext}({count}){ext}";
                 if (!fset.Contains(current))
                 {
-                    return Path.Combine(fpath, current);
+                    return Path.Combine(fpath, current).Replace("\\", "/");
                 }
                 count++;
             }
