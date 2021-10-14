@@ -1,8 +1,7 @@
-using LanZouAPI;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using LanZouAPI;
 
 namespace Test
 {
@@ -104,7 +103,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.upload_file(@"download/ToDesk_Lite.exe", -1, true, _progress =>
+            var info = await cloud.upload_file(@"download/WwiseLauncher.exe", -1, false, _progress =>
             {
                 if (_progress.state == UploadProgressInfo.State.Start)
                     isStartOK = true;

@@ -24,11 +24,15 @@ namespace LanZouAPI
 
         private async Task<string> _post_text(string url, Dictionary<string, string> data)
         {
+            return await _post_text(url, new FormUrlEncodedContent(data));
+        }
+
+        private async Task<string> _post_text(string url, HttpContent content)
+        {
             url = fix_url_domain(url);
             string text = null;
             using (var client = _get_client())
             {
-                var content = new FormUrlEncodedContent(data);
                 var resp = await client.PostAsync(url, content);
                 text = await resp.Content.ReadAsStringAsync();
             }
@@ -46,17 +50,21 @@ namespace LanZouAPI
             }
         }
 
+        private async Task<Stream> _get_stream(string url, Dictionary<string, string> headers = null,
+            float timeout = 0, bool allowRedirect = true, string proxy = null)
+        {
+            url = fix_url_domain(url);
+            using (var client = _get_client(headers, timeout, allowRedirect, proxy))
+            {
+                return await client.GetStreamAsync(url);
+            }
+        }
 
         internal class ProgressableStreamContent : HttpContent
         {
-            private const int defaultBufferSize = 4096;
-
             private HttpContent content;
             private int bufferSize;
             private Action<long, long> progress;
-
-            public ProgressableStreamContent(HttpContent content, Action<long, long> progress)
-                : this(content, defaultBufferSize, progress) { }
 
             public ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
             {
@@ -133,14 +141,8 @@ namespace LanZouAPI
                 }
             }
 
-            if (timeout > 0)
-            {
-                client.Timeout = new TimeSpan((long)(timeout * 10000000L));
-            }
-            else
-            {
-                timeout = _timeout;
-            }
+            timeout = timeout > 0 ? timeout : _timeout;
+            client.Timeout = new TimeSpan((long)(timeout * 10000000L));
 
             proxy = proxy ?? _proxy;
             if (proxy != null)

@@ -11,7 +11,7 @@ namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private int _chunk_size = 4096;             // 上传或下载是的块大小
+        private int _chunk_size = 4096;            // 上传或下载是的块大小
         private int _timeout = 15;                  // 每个请求的超时(不包含下载响应体的用时)
         private int _max_size = 100;                // 单个文件大小上限 MB
         private string _host_url = "https://pan.lanzoui.com";
@@ -721,30 +721,27 @@ namespace LanZouAPI
             if (content_length == null)
             {
                 // 请求内容
-                using (var resp_2 = await _get_resp(info.durl))
+                using (var _stream = await _get_stream(info.durl))
                 {
                     var _buffer = new byte[1];
                     var max_retries = 5;  // 5 次拿不到就算了
 
-                    using (var _stream = await resp_2.Content.ReadAsStreamAsync())
+                    while (content_length == null && max_retries > 0)
                     {
-                        while (content_length == null && max_retries > 0)
+                        max_retries -= 1;
+                        LogWarning("Not found Content-Length in response headers");
+                        LogInfo("Read 1 byte from stream...");
+                        await _stream.ReadAsync(_buffer, 0, 1);
+
+                        // 再请求一次试试，只请求头
+                        using (var resp_3 = await _get_resp(info.durl, null, 0, false, null, true))
                         {
-                            max_retries -= 1;
-                            LogWarning("Not found Content-Length in response headers");
-                            LogInfo("Read 1 byte from stream...");
-                            await _stream.ReadAsync(_buffer, 0, 1);
+                            if (resp_3 == null)
+                                return new DownloadInfo(LanZouCode.FAILED, share_url, info.name);
 
-                            // 再请求一次试试，只请求头
-                            using (var resp_3 = await _get_resp(info.durl, null, 0, false, null, true))
-                            {
-                                if (resp_3 == null)
-                                    return new DownloadInfo(LanZouCode.FAILED, share_url, info.name);
-
-                                content_length = resp_3.Content.Headers.ContentLength;
-                            }
-                            LogInfo($"Content-Length: {content_length}");
+                            content_length = resp_3.Content.Headers.ContentLength;
                         }
+                        LogInfo($"Content-Length: {content_length}");
                     }
                 }
             }
@@ -793,21 +790,25 @@ namespace LanZouAPI
 
             var headers = new Dictionary<string, string>(_headers);
             headers.Add("Range", $"bytes={now_size}-");
-
-            using (var resp = await _get_resp(info.durl, headers))
+            HttpStatusCode statusCode;
+            using (var resp = await _get_resp(info.durl, headers, 0, true, null, true))
             {
                 if (resp == null)   // 网络异常
                     return new DownloadInfo(LanZouCode.FAILED, share_url, info.name);
 
-                if (resp.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable) // 已经下载完成
-                {
-                    LogInfo($"File has already downloaded, just change filename to {file_path}");
-                }
-                else
+                statusCode = resp.StatusCode;
+            }
+
+            if (statusCode == HttpStatusCode.RequestedRangeNotSatisfiable) // 已经下载完成
+            {
+                LogInfo($"File has already downloaded, just change filename to {file_path}");
+            }
+            else
+            {
+                using (var netStream = await _get_stream(info.durl, headers))
                 {
                     int chunk_size = _chunk_size;
                     var chunk = new byte[chunk_size];
-                    var netStream = await resp.Content.ReadAsStreamAsync();
                     using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
                         FileAccess.Write, FileShare.Read, chunk_size))
                     {
@@ -815,7 +816,7 @@ namespace LanZouAPI
 
                         while (true)
                         {
-                            var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
+                            var readLength = netStream.Read(chunk, 0, chunk_size);
                             if (readLength == 0)
                                 break;
 
@@ -929,7 +930,7 @@ namespace LanZouAPI
                 HttpContent content;
                 if (progress != null)
                 {
-                    content = new ProgressableStreamContent(_content, (current, total) =>
+                    content = new ProgressableStreamContent(_content, _chunk_size, (current, total) =>
                     {
                         up_info.current = current;
                         up_info.total = total;
@@ -941,13 +942,7 @@ namespace LanZouAPI
                     content = _content;
                 }
 
-                using (var client = _get_client(null, 0, true, null))
-                {
-                    using (var resp = await client.PostAsync("https://pc.woozooo.com/fileup.php", content))
-                    {
-                        result = await resp.Content.ReadAsStringAsync();
-                    }
-                }
+                result = await _post_text("https://pc.woozooo.com/fileup.php", content);
             }
 
             var code = _get_rescode(result);
