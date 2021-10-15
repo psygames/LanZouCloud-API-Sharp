@@ -692,6 +692,9 @@ namespace LanZouAPI
             var p_finish = new ProgressInfo(ProgressState.Finish, filename, file_size, file_size);
             progress?.Report(p_finish);
 
+            await Task.Yield(); // 保证 progress report 到达
+            await Task.Yield(); // 保证 progress report 到达
+
             return new UploadInfo(LanZouCode.SUCCESS, filename, file_path, file_id, share_url);
         }
         #endregion
@@ -866,6 +869,9 @@ namespace LanZouAPI
             var p_finish = new ProgressInfo(ProgressState.Finish, filename, now_size, content_length);
             progress?.Report(p_finish);
 
+            await Task.Yield(); // 保证 progress report 到达
+            await Task.Yield(); // 保证 progress report 到达
+
             return new DownloadInfo(LanZouCode.SUCCESS, share_url, filename, file_path, is_continue);
         }
 
@@ -1018,7 +1024,6 @@ namespace LanZouAPI
             var f_type = Path.GetExtension(f_name).Substring(1);
             return new CloudFileInfo(LanZouCode.SUCCESS, f_name, f_time, f_size, f_desc, pwd, share_url, f_type, direct_url);
         }
-
 
         /// <summary>
         /// 通过分享链接，获取文件夹及其子文件信息（需提取码）
