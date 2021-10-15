@@ -90,6 +90,8 @@ namespace LanZouAPI
             return res;
         }
 
+        // TODO: 时间格式化
+
         /// <summary>
         /// 输出格式化时间 DateTime
         /// </summary>
@@ -207,6 +209,7 @@ namespace LanZouAPI
             return valid_suffix_list.Contains(ext);
         }
 
+        // TODO: Watch push & pop
         private void push_watch(string key)
         {
             // var watch = new Stopwatch();

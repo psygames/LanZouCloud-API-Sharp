@@ -1,5 +1,4 @@
 using LitJson;
-using System;
 using System.Collections.Generic;
 
 namespace LanZouAPI
@@ -23,6 +22,7 @@ namespace LanZouAPI
         internal Dictionary<long, string> folders;
     }
 
+    // TODO: 变量重新命名，同时添加注释，同时修改为属性访问
     public class CloudFile : JsonStringObject
     {
         public long id;
@@ -69,6 +69,7 @@ namespace LanZouAPI
             this.code = code;
         }
 
+        // TODO: 简化代码
         public CloudFileInfo(LanZouCode code, string pwd, string url)
         {
             this.code = code;

@@ -446,6 +446,8 @@ namespace LanZouAPI
             return await SetFolderInfo(folder_id, info.name, desc);
         }
 
+        // TODO: FIX Rename bug
+
         /// <summary>
         /// 允许会员重命名文件(无法修后缀名)
         /// </summary>
