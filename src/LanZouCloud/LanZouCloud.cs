@@ -11,7 +11,7 @@ namespace LanZouAPI
 {
     public partial class LanZouCloud
     {
-        private int _chunk_size = 4096;            // 上传或下载是的块大小
+        private int _chunk_size = 4096;             // 上传或下载是的块大小
         private int _timeout = 15;                  // 每个请求的超时(不包含下载响应体的用时)
         private int _max_size = 100;                // 单个文件大小上限 MB
         private string _host_url = "https://pan.lanzoui.com";
@@ -554,12 +554,6 @@ namespace LanZouAPI
             var post_data = _post_data("task", $"{46}", "file_id", $"{file_id}", "file_name", $"{name_format(filename)}", "type", $"{2}");
             var result = await _post_text(_doupload_url, post_data);
             return _get_rescode(result);
-        }
-
-        internal class _MoveFolderList
-        {
-            internal LanZouCode code;
-            internal Dictionary<long, string> folders;
         }
 
         /// <summary>

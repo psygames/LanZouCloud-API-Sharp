@@ -55,6 +55,12 @@ namespace LanZouAPI
         }
     }
 
+    internal class _MoveFolderList
+    {
+        internal LanZouCode code;
+        internal Dictionary<long, string> folders;
+    }
+
     public class CloudFolderDetail
     {
         public LanZouCode code;
