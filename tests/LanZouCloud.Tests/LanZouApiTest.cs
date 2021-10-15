@@ -78,7 +78,7 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.DownloadFile(fileList.files[0].id, "download", false,
+            var info = await cloud.DownloadFile(fileList.files[0].id, "download", true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
@@ -102,7 +102,6 @@ namespace Test
             Assert.IsTrue(isFinishOK);
         }
 
-
         [TestMethod]
         public async Task UploadFile()
         {
@@ -113,7 +112,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.UploadFile(@"download/WwiseLauncher.exe", -1, false,
+            var info = await cloud.UploadFile(@"download/WwiseLauncher.exe", -1, true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
