@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Threading.Tasks;
 using LanZouAPI;
+using System;
 
 namespace Test
 {
@@ -66,7 +67,8 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.down_file_by_id(fileList.files[0].id, "download", false, _progress =>
+            var info = await cloud.down_file_by_id(fileList.files[0].id, "download", false,
+                new Progress<DownloadProgressInfo>(_progress =>
             {
                 if (_progress.state == DownloadProgressInfo.State.Start)
                     isStartOK = true;
@@ -78,7 +80,7 @@ namespace Test
                 {
                     isFinishOK = true;
                 }
-            });
+            }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.share_url));
@@ -102,7 +104,8 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.upload_file(@"download/WwiseLauncher.exe", -1, false, _progress =>
+            var info = await cloud.upload_file(@"download/WwiseLauncher.exe", -1, false,
+                new Progress<UploadProgressInfo>(_progress =>
             {
                 if (_progress.state == UploadProgressInfo.State.Start)
                     isStartOK = true;
@@ -114,7 +117,7 @@ namespace Test
                 {
                     isFinishOK = true;
                 }
-            });
+            }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.share_url));

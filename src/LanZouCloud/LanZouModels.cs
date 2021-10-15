@@ -20,10 +20,12 @@ namespace LanZouAPI
         }
     }
 
-    public class CloudFileList
+    public class CloudFolder
     {
-        public LanZouCode code;
-        public List<CloudFile> files;
+        public long id;
+        public string name;
+        public bool has_pwd;
+        public string desc;
 
         public override string ToString()
         {
@@ -31,12 +33,10 @@ namespace LanZouAPI
         }
     }
 
-    public class CloudFolder
+    public class CloudFileList
     {
-        public long id;
-        public string name;
-        public bool has_pwd;
-        public string desc;
+        public LanZouCode code;
+        public List<CloudFile> files;
 
         public override string ToString()
         {

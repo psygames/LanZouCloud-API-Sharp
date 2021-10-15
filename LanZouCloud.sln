@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31515.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanZouCloud", "src\LanZouCloud\LanZouCloud.csproj", "{CE5465CB-FDBC-44A6-A3A4-90893A84E1F5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanZouCloud.Tests", "tests\LanZouCloud.Tests\LanZouCloud.Tests.csproj", "{36E405EA-FCD7-4878-9EB9-E51785F742CE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE5465CB-FDBC-44A6-A3A4-90893A84E1F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE5465CB-FDBC-44A6-A3A4-90893A84E1F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE5465CB-FDBC-44A6-A3A4-90893A84E1F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE5465CB-FDBC-44A6-A3A4-90893A84E1F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36E405EA-FCD7-4878-9EB9-E51785F742CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36E405EA-FCD7-4878-9EB9-E51785F742CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36E405EA-FCD7-4878-9EB9-E51785F742CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36E405EA-FCD7-4878-9EB9-E51785F742CE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A4EC49FE-60A6-48D5-84A5-8F360F70FBCD}
+	EndGlobalSection
+EndGlobal

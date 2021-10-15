@@ -691,10 +691,11 @@ namespace LanZouAPI
         /// <param name="progress">用于显示下载进度</param>
         /// <returns></returns>
         public async Task<DownloadInfo> down_file_by_url(string share_url, string save_dir,
-            string pwd = "", bool overwrite = false, Action<DownloadProgressInfo> progress = null)
+            string pwd = "", bool overwrite = false, IProgress<DownloadProgressInfo> progress = null)
         {
             var down_info = new DownloadProgressInfo() { state = DownloadProgressInfo.State.Start, share_url = share_url };
-            progress?.Invoke(down_info);
+            progress?.Report(down_info);
+            await Task.Yield();
 
             var watch = _watch_begin();
 
@@ -787,40 +788,44 @@ namespace LanZouAPI
             down_info.state = DownloadProgressInfo.State.Ready;
             down_info.filename = filename;
             down_info.is_continue = is_continue;
-            progress?.Invoke(down_info);
+            progress?.Report(down_info);
+            await Task.Yield();
 
             var headers = new Dictionary<string, string>(_headers);
             headers.Add("Range", $"bytes={now_size}-");
 
             watch = _watch_begin();
 
-            using (var client = _get_client(headers))
+            await Task.Run(async () =>
             {
-                using (var netStream = await client.GetStreamAsync(info.durl))
+                using (var client = _get_client(headers))
                 {
-                    int chunk_size = _chunk_size;
-                    var chunk = new byte[chunk_size];
-                    using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
-                        FileAccess.Write, FileShare.Read, chunk_size))
+                    using (var netStream = await client.GetStreamAsync(info.durl))
                     {
-                        down_info.state = DownloadProgressInfo.State.Downloading;
-
-                        while (true)
+                        int chunk_size = _chunk_size;
+                        var chunk = new byte[chunk_size];
+                        using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
+                            FileAccess.Write, FileShare.Read, chunk_size))
                         {
-                            var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
-                            if (readLength == 0)
-                                break;
+                            down_info.state = DownloadProgressInfo.State.Downloading;
 
-                            await fileStream.WriteAsync(chunk, 0, readLength);
-                            now_size += readLength;
+                            while (true)
+                            {
+                                var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
+                                if (readLength == 0)
+                                    break;
 
-                            down_info.current = now_size;
-                            down_info.total = (long)content_length;
-                            progress?.Invoke(down_info);
+                                await fileStream.WriteAsync(chunk, 0, readLength);
+                                now_size += readLength;
+
+                                down_info.current = now_size;
+                                down_info.total = (long)content_length;
+                                progress?.Report(down_info);
+                            }
                         }
                     }
                 }
-            }
+            });
 
             _watch_end("Download Stream", watch);
 
@@ -829,7 +834,8 @@ namespace LanZouAPI
             File.Move(tmp_file_path, file_path);
 
             down_info.state = DownloadProgressInfo.State.Finish;
-            progress?.Invoke(down_info);
+            progress?.Report(down_info);
+            await Task.Yield();
 
             return new DownloadInfo(LanZouCode.SUCCESS, share_url, filename, file_path, is_continue);
         }
@@ -843,7 +849,7 @@ namespace LanZouAPI
         /// <param name="progress"></param>
         /// <returns></returns>
         public async Task<DownloadInfo> down_file_by_id(long file_id, string save_dir,
-            bool overwrite = false, Action<DownloadProgressInfo> progress = null)
+            bool overwrite = false, IProgress<DownloadProgressInfo> progress = null)
         {
             var info = await get_share_info(file_id, true);
             if (info.code != LanZouCode.SUCCESS)
@@ -861,7 +867,7 @@ namespace LanZouAPI
         /// <param name="overwrite"></param>
         /// <param name="progress"></param>
         public async Task<UploadInfo> upload_file(string file_path, long folder_id = -1, bool overwrite = false,
-            Action<UploadProgressInfo> progress = null)
+            IProgress<UploadProgressInfo> progress = null)
         {
             var watch = _watch_begin();
 
@@ -871,7 +877,8 @@ namespace LanZouAPI
             var filename = name_format(Path.GetFileName(file_path));
 
             var up_info = new UploadProgressInfo() { state = UploadProgressInfo.State.Start, filename = filename };
-            progress?.Invoke(up_info);
+            progress?.Report(up_info);
+            await Task.Yield();
 
             if (!File.Exists(file_path))
                 return new UploadInfo(LanZouCode.PATH_ERROR, filename, file_path);
@@ -910,7 +917,8 @@ namespace LanZouAPI
 
             up_info.total = file_size;
             up_info.state = UploadProgressInfo.State.Ready;
-            progress?.Invoke(up_info);
+            progress?.Report(up_info);
+            await Task.Yield();
 
             LogInfo($"Upload file_path:{file_path} to folder_id:{folder_id}");
 
@@ -919,7 +927,7 @@ namespace LanZouAPI
             string result;
 
             up_info.state = UploadProgressInfo.State.Uploading;
-            progress?.Invoke(up_info);
+            progress?.Report(up_info);
 
             using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -933,12 +941,14 @@ namespace LanZouAPI
                 HttpContent content;
                 if (progress != null)
                 {
-                    content = new ProgressableStreamContent(_content, _chunk_size, (current, total) =>
+                    var _p = new Progress<progress>(p =>
                     {
-                        up_info.current = current;
-                        up_info.total = total;
-                        progress?.Invoke(up_info);
+                        up_info.current = p.current;
+                        up_info.total = p.total;
+                        progress?.Report(up_info);
                     });
+
+                    content = new ProgressableStreamContent(_content, _chunk_size, _p);
                 }
                 else
                 {
@@ -963,14 +973,15 @@ namespace LanZouAPI
             if (code != LanZouCode.SUCCESS)
                 return new UploadInfo(code, filename, file_path);
 
-            up_info.state = UploadProgressInfo.State.Finish;
-            progress?.Invoke(up_info);
-
             var json = JsonMapper.ToObject(result);
             var file_id = long.Parse(json["text"][0]["id"].ToString());
             var f_id = json["text"][0]["f_id"].ToString();
             var is_newd = json["text"][0]["is_newd"].ToString();
             var share_url = is_newd + "/" + f_id;
+
+            up_info.state = UploadProgressInfo.State.Finish;
+            progress?.Report(up_info);
+            await Task.Yield();
 
             return new UploadInfo(LanZouCode.SUCCESS, filename, file_path, file_id, share_url);
         }
