@@ -572,7 +572,7 @@ namespace LanZouAPI
         /// <param name="progress"></param>
         /// <returns></returns>
         public async Task<DownloadInfo> DownloadFile(long file_id, string save_dir,
-            bool overwrite = false, IProgress<DownloadProgressInfo> progress = null)
+            bool overwrite = false, IProgress<ProgressInfo> progress = null)
         {
             var info = await GetFileShareInfo(file_id);
             if (info.code != LanZouCode.SUCCESS)
@@ -589,23 +589,19 @@ namespace LanZouAPI
         /// <param name="overwrite"></param>
         /// <param name="progress"></param>
         public async Task<UploadInfo> UploadFile(string file_path, long folder_id = -1, bool overwrite = false,
-            IProgress<UploadProgressInfo> progress = null)
+            IProgress<ProgressInfo> progress = null)
         {
-            var watch = _watch_begin();
-
             file_path = Path.GetFullPath(file_path);
             file_path = file_path.Replace("\\", "/");
 
-            var filename = name_format(Path.GetFileName(file_path));
-
-            var up_info = new UploadProgressInfo() { state = UploadProgressInfo.State.Start, filename = filename };
-            progress?.Report(up_info);
-            await Task.Yield();
-
             if (!File.Exists(file_path))
-                return new UploadInfo(LanZouCode.PATH_ERROR, filename, file_path);
+                return new UploadInfo(LanZouCode.PATH_ERROR, Path.GetFileName(file_path), file_path);
 
+            var filename = name_format(Path.GetFileName(file_path));
             var file_size = new FileInfo(file_path).Length;
+
+            var p_start = new ProgressInfo(ProgressState.Start, filename, 0, file_size);
+            progress?.Report(p_start);
 
             if (file_size > _max_size * 1024 * 1024)
                 return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, filename, file_path);
@@ -614,12 +610,10 @@ namespace LanZouAPI
             if (!is_name_valid(file_path))
                 return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, filename, file_path);
 
-            _watch_end("Upload Prepare", watch);
-
             // 文件已经存在同名文件就删除
             if (overwrite)
             {
-                watch = _watch_begin();
+                push_watch("Upload Overwrite");
 
                 var file_list = await GetFileList(folder_id);
                 if (file_list.code != LanZouCode.SUCCESS)
@@ -632,15 +626,11 @@ namespace LanZouAPI
                     await DeleteFile(file.id);
                 }
 
-                _watch_end("Upload Overwrite", watch);
+                pop_watch();
             }
 
-            watch = _watch_begin();
-
-            up_info.total = file_size;
-            up_info.state = UploadProgressInfo.State.Ready;
-            progress?.Report(up_info);
-            await Task.Yield();
+            var p_ready = new ProgressInfo(ProgressState.Ready, filename, 0, file_size);
+            progress?.Report(p_ready);
 
             LogInfo($"Upload file_path:{file_path} to folder_id:{folder_id}");
 
@@ -648,8 +638,7 @@ namespace LanZouAPI
 
             string result;
 
-            up_info.state = UploadProgressInfo.State.Uploading;
-            progress?.Report(up_info);
+            push_watch("Upload Stream");
 
             using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -663,14 +652,13 @@ namespace LanZouAPI
                 HttpContent content;
                 if (progress != null)
                 {
-                    var _p = new Progress<progress>(p =>
+                    var p_uploading = new ProgressInfo(ProgressState.Progressing, filename, 0, file_size);
+                    content = new ProgressableStreamContent(_content, _chunk_size, (_current, _total) =>
                     {
-                        up_info.current = p.current;
-                        up_info.total = p.total;
-                        progress?.Report(up_info);
+                        p_uploading.current = _current;
+                        p_uploading.total = _total;
+                        progress?.Report(p_uploading);
                     });
-
-                    content = new ProgressableStreamContent(_content, _chunk_size, _p);
                 }
                 else
                 {
@@ -689,7 +677,7 @@ namespace LanZouAPI
                 }
             }
 
-            _watch_end("Upload Stream", watch);
+            pop_watch();
 
             var code = _get_rescode(result);
             if (code != LanZouCode.SUCCESS)
@@ -701,9 +689,8 @@ namespace LanZouAPI
             var is_newd = json["text"][0]["is_newd"].ToString();
             var share_url = is_newd + "/" + f_id;
 
-            up_info.state = UploadProgressInfo.State.Finish;
-            progress?.Report(up_info);
-            await Task.Yield();
+            var p_finish = new ProgressInfo(ProgressState.Finish, filename, file_size, file_size);
+            progress?.Report(p_finish);
 
             return new UploadInfo(LanZouCode.SUCCESS, filename, file_path, file_id, share_url);
         }
@@ -722,13 +709,10 @@ namespace LanZouAPI
         /// <param name="progress">用于显示下载进度</param>
         /// <returns></returns>
         public async Task<DownloadInfo> DownloadFileByUrl(string share_url, string save_dir,
-            string pwd = "", bool overwrite = false, IProgress<DownloadProgressInfo> progress = null)
+            string pwd = "", bool overwrite = false, IProgress<ProgressInfo> progress = null)
         {
-            var down_info = new DownloadProgressInfo() { state = DownloadProgressInfo.State.Start, share_url = share_url };
-            progress?.Report(down_info);
-            await Task.Yield();
-
-            var watch = _watch_begin();
+            var p_start = new ProgressInfo(ProgressState.Start);
+            progress?.Report(p_start);
 
             if (!await is_file_url(share_url))
                 return new DownloadInfo(LanZouCode.URL_INVALID, share_url);
@@ -740,19 +724,16 @@ namespace LanZouAPI
             if (info.code != LanZouCode.SUCCESS)
                 return new DownloadInfo(info.code, share_url);
 
-            long? content_length;
 
             // 只请求头
-            content_length = (await _get_headers(info.durl)).ContentLength;
-
-            _watch_end("Download Prepare", watch);
+            var _con_len = (await _get_headers(info.durl)).ContentLength;
 
             // 对于 txt 文件, 可能出现没有 Content-Length 的情况
             // 此时文件需要下载一次才会出现 Content-Length
             // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
-            if (content_length == null)
+            if (_con_len == null)
             {
-                watch = _watch_begin();
+                push_watch("Download Get Content-Length");
 
                 // 请求内容
                 using (var client = _get_client())
@@ -762,7 +743,7 @@ namespace LanZouAPI
                         var _buffer = new byte[1];
                         var max_retries = 5;  // 5 次拿不到就算了
 
-                        while (content_length == null && max_retries > 0)
+                        while (_con_len == null && max_retries > 0)
                         {
                             max_retries -= 1;
                             LogWarning("Not found Content-Length in response headers");
@@ -770,18 +751,20 @@ namespace LanZouAPI
                             await _stream.ReadAsync(_buffer, 0, 1);
 
                             // 再请求一次试试，只请求头
-                            content_length = (await _get_headers(info.durl)).ContentLength;
-                            LogInfo($"Content-Length: {content_length}");
+                            _con_len = (await _get_headers(info.durl)).ContentLength;
+                            LogInfo($"Content-Length: {_con_len}");
                         }
                     }
                 }
 
-                _watch_end("Download Find Content Length", watch);
+                pop_watch();
             }
 
             // 应该不会出现这种情况
-            if (content_length == null)
+            if (_con_len == null)
                 return new DownloadInfo(LanZouCode.FAILED, share_url, info.name);
+
+            var content_length = _con_len.GetValueOrDefault();
 
             // 如果本地存在同名文件且设置了 overwrite, 则覆盖原文件
             // 否则修改下载文件路径, 自动在文件名后加序号
@@ -809,64 +792,79 @@ namespace LanZouAPI
             // 支持断点续传下载
             long now_size = 0;
             bool is_continue = false;
+            bool is_downloaded = false;
             if (File.Exists(tmp_file_path))
             {
                 now_size = new FileInfo(tmp_file_path).Length;  // 本地已经下载的文件大小
                 is_continue = true;
+                if (now_size > content_length)      // 大小错误，删除重新下载
+                {
+                    File.Delete(tmp_file_path);
+                    now_size = 0;
+                    is_continue = false;
+                }
+                else if (now_size == content_length) // 已经下载完成，只是未改后缀名
+                {
+                    is_downloaded = true;
+                }
             }
 
             var filename = Path.GetFileName(file_path);
-            down_info.state = DownloadProgressInfo.State.Ready;
-            down_info.filename = filename;
-            down_info.is_continue = is_continue;
-            progress?.Report(down_info);
-            await Task.Yield();
 
-            var headers = new Dictionary<string, string>(_headers);
-            headers.Add("Range", $"bytes={now_size}-");
+            var p_ready = new ProgressInfo(ProgressState.Ready, filename, now_size, content_length);
+            progress?.Report(p_ready);
 
-            watch = _watch_begin();
-
-            await Task.Run(async () =>
+            if (is_downloaded)
             {
-                using (var client = _get_client(headers))
+                LogInfo($"Has already downloaded: {tmp_file_path}");
+                var p_downloading = new ProgressInfo(ProgressState.Progressing, filename, now_size, content_length);
+                progress?.Report(p_downloading);
+            }
+            else
+            {
+                push_watch("Download Stream");
+
+                await Task.Run(async () =>
                 {
-                    using (var netStream = await client.GetStreamAsync(info.durl))
+                    var headers = new Dictionary<string, string>(_headers);
+                    headers.Add("Range", $"bytes={now_size}-");
+                    int chunk_size = _chunk_size;
+                    var chunk = new byte[chunk_size];
+                    var p_downloading = new ProgressInfo(ProgressState.Progressing, filename, now_size, content_length);
+
+                    using (var client = _get_client(headers))
                     {
-                        int chunk_size = _chunk_size;
-                        var chunk = new byte[chunk_size];
-                        using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
-                            FileAccess.Write, FileShare.Read, chunk_size))
+                        using (var netStream = await client.GetStreamAsync(info.durl))
                         {
-                            down_info.state = DownloadProgressInfo.State.Downloading;
-
-                            while (true)
+                           using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
+                                FileAccess.Write, FileShare.Read, chunk_size))
                             {
-                                var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
-                                if (readLength == 0)
-                                    break;
+                                while (true)
+                                {
+                                    var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
+                                    if (readLength == 0)
+                                        break;
 
-                                await fileStream.WriteAsync(chunk, 0, readLength);
-                                now_size += readLength;
+                                    await fileStream.WriteAsync(chunk, 0, readLength);
+                                    now_size += readLength;
 
-                                down_info.current = now_size;
-                                down_info.total = (long)content_length;
-                                progress?.Report(down_info);
+                                    p_downloading.current = now_size;
+                                    progress?.Report(p_downloading);
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
 
-            _watch_end("Download Stream", watch);
+                pop_watch();
+            }
 
             // 下载完成，改回正常文件名
-            LogInfo($"move file to real path: {file_path}");
+            LogInfo($"Move file to real path: {file_path}");
             File.Move(tmp_file_path, file_path);
 
-            down_info.state = DownloadProgressInfo.State.Finish;
-            progress?.Report(down_info);
-            await Task.Yield();
+            var p_finish = new ProgressInfo(ProgressState.Finish, filename, now_size, content_length);
+            progress?.Report(p_finish);
 
             return new DownloadInfo(LanZouCode.SUCCESS, share_url, filename, file_path, is_continue);
         }

@@ -207,17 +207,16 @@ namespace LanZouAPI
             return valid_suffix_list.Contains(ext);
         }
 
-        private Stopwatch _watch_begin()
+        private void push_watch(string key)
         {
-            var watch = new Stopwatch();
-            watch.Start();
-            return watch;
+            // var watch = new Stopwatch();
+            // watch.Start();
         }
 
-        private void _watch_end(string title, Stopwatch watch)
+        private void pop_watch()
         {
-            watch.Stop();
-            LogInfo($"[{title}] cost: {watch.Elapsed}");
+            // watch.Stop();
+            // LogInfo($"[{title}] cost: {watch.Elapsed}");
         }
     }
 }

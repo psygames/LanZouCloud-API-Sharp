@@ -79,18 +79,16 @@ namespace Test
             bool isFinishOK = false;
 
             var info = await cloud.DownloadFile(fileList.files[0].id, "download", false,
-                new Progress<DownloadProgressInfo>(_progress =>
+                new Progress<ProgressInfo>(_progress =>
             {
-                if (_progress.state == DownloadProgressInfo.State.Start)
+                if (_progress.state == ProgressState.Start)
                     isStartOK = true;
-                if (_progress.state == DownloadProgressInfo.State.Ready)
+                if (_progress.state == ProgressState.Ready)
                     isReadyOK = true;
-                if (_progress.state == DownloadProgressInfo.State.Downloading)
+                if (_progress.state == ProgressState.Progressing)
                     isDownloadingOK = true;
-                if (_progress.state == DownloadProgressInfo.State.Finish && _progress.current == _progress.total)
-                {
+                if (_progress.state == ProgressState.Finish)
                     isFinishOK = true;
-                }
             }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
@@ -116,18 +114,16 @@ namespace Test
             bool isFinishOK = false;
 
             var info = await cloud.UploadFile(@"download/WwiseLauncher.exe", -1, false,
-                new Progress<UploadProgressInfo>(_progress =>
+                new Progress<ProgressInfo>(_progress =>
             {
-                if (_progress.state == UploadProgressInfo.State.Start)
+                if (_progress.state == ProgressState.Start)
                     isStartOK = true;
-                if (_progress.state == UploadProgressInfo.State.Ready)
+                if (_progress.state == ProgressState.Ready)
                     isReadyOK = true;
-                if (_progress.state == UploadProgressInfo.State.Uploading)
+                if (_progress.state == ProgressState.Progressing)
                     isUploadingOK = true;
-                if (_progress.state == UploadProgressInfo.State.Finish && _progress.current == _progress.total)
-                {
+                if (_progress.state == ProgressState.Finish)
                     isFinishOK = true;
-                }
             }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);

@@ -257,38 +257,28 @@ namespace LanZouAPI
         }
     }
 
-    // TODO: Progress Report 同一个对象，数值线程共享读写问题
-    public class DownloadProgressInfo : JsonStringObject
+    public enum ProgressState
     {
-        public enum State
-        {
-            Start,
-            Ready,
-            Downloading,
-            Finish,
-        }
-
-        public State state;
-        public long current;
-        public long total;
-        public string filename;
-        public string share_url;
-        public bool is_continue;
+        Start,
+        Ready,
+        Progressing,
+        Finish,
     }
 
-    public class UploadProgressInfo : JsonStringObject
+    public class ProgressInfo : JsonStringObject
     {
-        public enum State
-        {
-            Start,
-            Ready,
-            Uploading,
-            Finish,
-        }
-
-        public State state;
+        public ProgressState state;
+        public string filename;
         public long current;
         public long total;
-        public string filename;
+
+        internal ProgressInfo(ProgressState state, string filename = null, long current = 0, long total = 0)
+        {
+            this.state = state;
+            this.filename = filename;
+            this.current = current;
+            this.total = total;
+        }
     }
+
 }

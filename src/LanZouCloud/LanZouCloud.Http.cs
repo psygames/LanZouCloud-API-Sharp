@@ -52,25 +52,13 @@ namespace LanZouAPI
             return content_headers;
         }
 
-        internal struct progress
-        {
-            public long current;
-            public long total;
-
-            public progress(long current, long total)
-            {
-                this.current = current;
-                this.total = total;
-            }
-        }
-
         internal class ProgressableStreamContent : HttpContent
         {
             private HttpContent content;
             private int bufferSize;
-            private IProgress<progress> progress;
+            private Action<long, long> progress;
 
-            public ProgressableStreamContent(HttpContent content, int bufferSize, IProgress<progress> progress)
+            public ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
             {
                 this.content = content;
                 this.bufferSize = bufferSize;
@@ -78,26 +66,32 @@ namespace LanZouAPI
 
                 foreach (var h in content.Headers)
                 {
-                    this.Headers.Add(h.Key, h.Value);
+                    Headers.Add(h.Key, h.Value);
                 }
             }
 
-            protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            protected override Task SerializeToStreamAsync(Stream netStream, TransportContext context)
             {
-                var buffer = new byte[bufferSize];
-                TryComputeLength(out var size);
-                var uploaded = 0;
-                using (var sinput = await content.ReadAsStreamAsync())
+                return Task.Run(async () =>
                 {
-                    while (true)
+                    var buffer = new byte[bufferSize];
+                    TryComputeLength(out var total);
+                    var current = 0;
+                    using (var fileStream = await content.ReadAsStreamAsync())
                     {
-                        var length = sinput.Read(buffer, 0, bufferSize);
-                        if (length == 0) break;
-                        stream.Write(buffer, 0, length);
-                        uploaded += length;
-                        progress?.Report(new progress(uploaded, size));
+                        while (true)
+                        {
+                            var length = await fileStream.ReadAsync(buffer, 0, bufferSize);
+                            if (length == 0)
+                                break;
+
+                            await netStream.WriteAsync(buffer, 0, length);
+                            current += length;
+
+                            progress?.Invoke(current, total);
+                        }
                     }
-                }
+                });
             }
 
             protected override bool TryComputeLength(out long length)
