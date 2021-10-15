@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -97,7 +95,7 @@ namespace LanZouAPI
         /// </summary>
         /// <param name="time_str"></param>
         /// <returns></returns>
-        public string time_format(string time_str)
+        private string time_format(string time_str)
         {
             //if '秒前' in time_str or '分钟前' in time_str or '小时前' in time_str:
             //        return datetime.today().strftime('%Y-%m-%d')
@@ -216,7 +214,7 @@ namespace LanZouAPI
             return watch;
         }
 
-        private void _watch_end(string title,Stopwatch watch)
+        private void _watch_end(string title, Stopwatch watch)
         {
             watch.Stop();
             LogInfo($"[{title}] cost: {watch.Elapsed}");

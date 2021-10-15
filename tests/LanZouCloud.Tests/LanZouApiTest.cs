@@ -12,8 +12,8 @@ namespace Test
         private async Task<LanZouCloud> EnsureLoginCloud()
         {
             var cloud = new LanZouCloud();
-            cloud.set_log_level(LanZouCloud.LogLevel.Info);
-            var code = await cloud.login_by_cookie("1104264", "VWAHNAJgAjoPPwdhWzVUB1MxDTxdDVA2UmkBZwI0BTdXYl9tVzANNQc9VDcMXwBvVWRSMQpkAGIDOAIzAzYKPVUwB2cCMgI3DzsHYls1VDlTMA09XTJQYlIzATcCNQU1V2FfZFdgDTEHPFRmDGMAU1U0UmgKZQBnAzACYwM1Cj1VZQc9AmM%3D");
+            cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
+            var code = await cloud.Login("1104264", "VWAHNAJgAjoPPwdhWzVUB1MxDTxdDVA2UmkBZwI0BTdXYl9tVzANNQc9VDcMXwBvVWRSMQpkAGIDOAIzAzYKPVUwB2cCMgI3DzsHYls1VDlTMA09XTJQYlIzATcCNQU1V2FfZFdgDTEHPFRmDGMAU1U0UmgKZQBnAzACYwM1Cj1VZQc9AmM%3D");
             Assert.IsTrue(code == LanZouCode.SUCCESS);
             return cloud;
         }
@@ -28,7 +28,7 @@ namespace Test
         public async Task GetFileList()
         {
             var cloud = await EnsureLoginCloud();
-            var fileList = await cloud.get_file_list();
+            var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
             Assert.IsTrue(fileList.files != null);
         }
@@ -37,29 +37,40 @@ namespace Test
         public async Task GetFolderList()
         {
             var cloud = await EnsureLoginCloud();
-            var fileList = await cloud.get_folder_list();
+            var fileList = await cloud.GetFolderList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
             Assert.IsTrue(fileList.folders != null);
         }
-
 
         [TestMethod]
         public async Task GetFileInfoById()
         {
             var cloud = await EnsureLoginCloud();
-            var fileList = await cloud.get_file_list();
+            var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
 
-            var fileInfo = await cloud.get_file_info_by_id(fileList.files[0].id);
+            var fileInfo = await cloud.GetFileInfo(fileList.files[0].id);
             Assert.IsTrue(fileInfo.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(fileInfo.durl));
+        }
+
+        [TestMethod]
+        public async Task GetFolderInfoById()
+        {
+            var cloud = await EnsureLoginCloud();
+            var folderList = await cloud.GetFolderList();
+            Assert.IsTrue(folderList.code == LanZouCode.SUCCESS);
+
+            var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 2);
+            Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
         }
 
         [TestMethod]
         public async Task DownloadFileById()
         {
             var cloud = await EnsureLoginCloud();
-            var fileList = await cloud.get_file_list();
+            var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
 
             bool isStartOK = false;
@@ -67,7 +78,7 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.down_file_by_id(fileList.files[0].id, "download", false,
+            var info = await cloud.DownloadFile(fileList.files[0].id, "download", false,
                 new Progress<DownloadProgressInfo>(_progress =>
             {
                 if (_progress.state == DownloadProgressInfo.State.Start)
@@ -104,7 +115,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.upload_file(@"download/WwiseLauncher.exe", -1, false,
+            var info = await cloud.UploadFile(@"download/WwiseLauncher.exe", -1, false,
                 new Progress<UploadProgressInfo>(_progress =>
             {
                 if (_progress.state == UploadProgressInfo.State.Start)

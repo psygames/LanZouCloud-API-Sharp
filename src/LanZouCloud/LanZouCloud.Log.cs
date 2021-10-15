@@ -1,9 +1,4 @@
 using System;
-using System.IO;
-using System.Net;
-using System.Net.Security;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LanZouAPI
 {
@@ -23,10 +18,12 @@ namespace LanZouAPI
         /// 设置日志等级
         /// </summary>
         /// <param name="level"></param>
-        public void set_log_level(LogLevel level)
+        public void SetLogLevel(LogLevel level)
         {
             this._log_level = level;
         }
+
+        // TODO: 异常处理 和 错误输出
 
         private void LogError(object log)
         {

@@ -1,9 +1,29 @@
 using LitJson;
+using System;
 using System.Collections.Generic;
 
 namespace LanZouAPI
 {
-    public class CloudFile
+    public class JsonStringObject
+    {
+        public override string ToString()
+        {
+            return JsonMapper.ToJson(this);
+        }
+    }
+
+    public class Result : JsonStringObject
+    {
+        public LanZouCode code;
+        public string error_message;
+    }
+
+    internal class MoveFolderList : Result
+    {
+        internal Dictionary<long, string> folders;
+    }
+
+    public class CloudFile : JsonStringObject
     {
         public long id;
         public string name;
@@ -13,57 +33,28 @@ namespace LanZouAPI
         public int downs;
         public bool has_pwd;
         public bool has_des;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class CloudFolder
+    public class CloudFolder : JsonStringObject
     {
         public long id;
         public string name;
         public bool has_pwd;
         public string desc;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class CloudFileList
+    public class CloudFileList : Result
     {
-        public LanZouCode code;
         public List<CloudFile> files;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class CloudFolderList
+    public class CloudFolderList : Result
     {
-        public LanZouCode code;
         public List<CloudFolder> folders;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    internal class _MoveFolderList
+    public class CloudFileInfo : Result
     {
-        internal LanZouCode code;
-        internal Dictionary<long, string> folders;
-    }
-
-    public class CloudFolderDetail
-    {
-        public LanZouCode code;
         public string name;
         public string pwd;
         public string desc;
@@ -73,19 +64,19 @@ namespace LanZouAPI
         public string type;
         public string durl;
 
-        public CloudFolderDetail(LanZouCode code)
+        public CloudFileInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public CloudFolderDetail(LanZouCode code, string pwd, string url)
+        public CloudFileInfo(LanZouCode code, string pwd, string url)
         {
             this.code = code;
             this.pwd = pwd;
             this.url = url;
         }
 
-        public CloudFolderDetail(LanZouCode code, string name, string time, string size, string desc, string pwd, string url)
+        public CloudFileInfo(LanZouCode code, string name, string time, string size, string desc, string pwd, string url)
         {
             this.code = code;
             this.name = name;
@@ -96,7 +87,7 @@ namespace LanZouAPI
             this.url = url;
         }
 
-        public CloudFolderDetail(LanZouCode code, string name, string time, string size, string desc, string pwd, string url, string type, string durl)
+        public CloudFileInfo(LanZouCode code, string name, string time, string size, string desc, string pwd, string url, string type, string durl)
         {
             this.code = code;
             this.name = name;
@@ -108,71 +99,65 @@ namespace LanZouAPI
             this.type = type;
             this.durl = durl;
         }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
 
-    public class CloudFileDetail
+    /// <summary>
+    /// 专为 CloudFolderInfo 使用，指其下子文件夹
+    /// </summary>
+    public class SubFolder : JsonStringObject
     {
-        public LanZouCode code;
         public string name;
+        public string desc;
+        public string url;
+    }
+
+    /// <summary>
+    /// 专为 CloudFolderInfo 使用，指其下子文件
+    /// </summary>
+    public class SubFile : JsonStringObject
+    {
+        public string name;
+        public string time;
+        public string size;
+        public string type;
+        public string url;
+    }
+
+    public class CloudFolderInfo : Result
+    {
+        public long id;
+        public string name;
+        public string time;
         public string pwd;
         public string desc;
         public string url;
-        public string size;
-        public string time;
-        public string type;
-        public string durl;
 
-        public CloudFileDetail(LanZouCode code)
+        public List<SubFolder> folders;
+        public List<SubFile> files;
+
+        public CloudFolderInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public CloudFileDetail(LanZouCode code, string pwd, string url)
+        public CloudFolderInfo(LanZouCode code, long id, string name, string time, string pwd,
+            string desc, string url, List<SubFolder> folders, List<SubFile> files)
         {
             this.code = code;
-            this.pwd = pwd;
-            this.url = url;
-        }
-
-        public CloudFileDetail(LanZouCode code, string name, string time, string size, string desc, string pwd, string url)
-        {
-            this.code = code;
+            this.id = id;
             this.name = name;
             this.time = time;
-            this.size = size;
             this.desc = desc;
             this.pwd = pwd;
             this.url = url;
-        }
-
-        public CloudFileDetail(LanZouCode code, string name, string time, string size, string desc, string pwd, string url, string type, string durl)
-        {
-            this.code = code;
-            this.name = name;
-            this.time = time;
-            this.size = size;
-            this.desc = desc;
-            this.pwd = pwd;
-            this.url = url;
-            this.type = type;
-            this.durl = durl;
-        }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
+            this.folders = folders;
+            this.files = files;
         }
     }
 
-    public class ShareInfo
+    public class ShareInfo : Result
     {
-        public LanZouCode code;
         public string name;
         public string desc;
         public string url;
@@ -191,66 +176,30 @@ namespace LanZouAPI
             this.pwd = pwd;
             this.url = url;
         }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class DirectUrlInfo
+    public class CreateFolderInfo : Result
     {
-        public LanZouCode code;
-        public string name;
-        public string durl;
-
-        public DirectUrlInfo(LanZouCode code)
-        {
-            this.code = code;
-        }
-
-        public DirectUrlInfo(LanZouCode code, string name, string durl)
-        {
-            this.code = code;
-            this.name = name;
-            this.durl = durl;
-        }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
-    }
-
-    public class MakeDirInfo
-    {
-        public LanZouCode code;
         public long id;
         public string name;
         public string desc;
 
-        public MakeDirInfo(LanZouCode code)
+        public CreateFolderInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public MakeDirInfo(LanZouCode code, long id, string name, string desc)
+        public CreateFolderInfo(LanZouCode code, long id, string name, string desc)
         {
             this.code = code;
             this.id = id;
             this.name = name;
             this.desc = desc;
         }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class DownloadInfo
+    public class DownloadInfo : Result
     {
-        public LanZouCode code;
         public string filename;
         public string file_path;
         public string share_url;
@@ -282,39 +231,10 @@ namespace LanZouAPI
             this.file_path = file_path;
             this.is_continue = is_continue;
         }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class DownloadProgressInfo
+    public class UploadInfo : Result
     {
-        public enum State
-        {
-            Start,
-            Ready,
-            Downloading,
-            Finish,
-        }
-
-        public State state;
-        public long current;
-        public long total;
-        public string filename;
-        public string share_url;
-        public bool is_continue;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
-    }
-
-    public class UploadInfo
-    {
-        public LanZouCode code;
         public string filename;
         public string file_path;
         public long file_id;
@@ -335,14 +255,28 @@ namespace LanZouAPI
             this.file_id = file_id;
             this.share_url = share_url;
         }
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 
-    public class UploadProgressInfo
+    // TODO: Progress Report 同一个对象，数值线程共享读写问题
+    public class DownloadProgressInfo : JsonStringObject
+    {
+        public enum State
+        {
+            Start,
+            Ready,
+            Downloading,
+            Finish,
+        }
+
+        public State state;
+        public long current;
+        public long total;
+        public string filename;
+        public string share_url;
+        public bool is_continue;
+    }
+
+    public class UploadProgressInfo : JsonStringObject
     {
         public enum State
         {
@@ -356,10 +290,5 @@ namespace LanZouAPI
         public long current;
         public long total;
         public string filename;
-
-        public override string ToString()
-        {
-            return JsonMapper.ToJson(this);
-        }
     }
 }
