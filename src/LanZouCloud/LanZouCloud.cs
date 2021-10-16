@@ -187,9 +187,9 @@ namespace LanZouAPI
                         time = time_format((string)f_json["time"]),                     // 上传时间
                         size = f_json["size"].ToString().Replace(",", ""),              // 文件大小
                         type = Path.GetExtension(f_json["name_all"].ToString()).Substring(1),   // 文件类型
-                        downs = int.Parse(f_json["downs"].ToString()),                  // 下载次数
-                        has_pwd = int.Parse(f_json["onof"].ToString()) == 1,            // 是否存在提取码
-                        has_des = int.Parse(f_json["is_des"].ToString()) == 1,          // 是否存在描述
+                        downloads = int.Parse(f_json["downs"].ToString()),                  // 下载次数
+                        hasPassword = int.Parse(f_json["onof"].ToString()) == 1,            // 是否存在提取码
+                        hasDescription = int.Parse(f_json["is_des"].ToString()) == 1,       // 是否存在描述
                     });
                 }
 
@@ -228,8 +228,8 @@ namespace LanZouAPI
                 {
                     id = long.Parse(f_json["fol_id"].ToString()),
                     name = f_json["name"].ToString(),
-                    has_pwd = int.Parse(f_json["onof"].ToString()) == 1,
-                    desc = f_json["folder_des"].ToString().Trim('[', ']'),
+                    hasPassword = int.Parse(f_json["onof"].ToString()) == 1,
+                    description = f_json["folder_des"].ToString().Trim('[', ']'),
                 });
             }
 
@@ -246,7 +246,7 @@ namespace LanZouAPI
             var info = await GetFileShareInfo(file_id);
             if (info.code != LanZouCode.SUCCESS)
                 return new CloudFileInfo(info.code);
-            return await GetFileInfoByUrl(info.url, info.pwd);
+            return await GetFileInfoByUrl(info.url, info.password);
         }
 
 
@@ -260,7 +260,7 @@ namespace LanZouAPI
             var info = await GetFolderShareInfo(folder_id);
             if (info.code != LanZouCode.SUCCESS)
                 return new CloudFolderInfo(info.code);
-            return await GetFolderInfoByUrl(info.url, info.pwd, max_page_count);
+            return await GetFolderInfoByUrl(info.url, info.password, max_page_count);
         }
 
         /// <summary>
@@ -378,7 +378,7 @@ namespace LanZouAPI
 
             var exist_folder = folder_list.folders.Find(a => a.name == folder_name);
             if (exist_folder != null)                       // 如果文件夹已经存在，直接返回
-                return new CreateFolderInfo(LanZouCode.SUCCESS, exist_folder.id, exist_folder.name, exist_folder.desc);
+                return new CreateFolderInfo(LanZouCode.SUCCESS, exist_folder.id, exist_folder.name, exist_folder.description);
 
             var raw_move_folder_list = await GetMoveFolders();
             if (raw_move_folder_list.code != LanZouCode.SUCCESS)
@@ -473,7 +473,7 @@ namespace LanZouAPI
             var info = await GetFolderShareInfo(folder_id);
             if (info.code != LanZouCode.SUCCESS)
                 return info.code;
-            return await SetFolderInfo(folder_id, folder_name, info.desc);
+            return await SetFolderInfo(folder_id, folder_name, info.description);
         }
 
         /// <summary>
@@ -528,7 +528,7 @@ namespace LanZouAPI
 
             // 在目标文件夹下创建同名文件夹
             var info = await GetFolderShareInfo(folder_id);
-            var mkdir_info = await CreateFolder(folder_name, parent_folder_id, info.desc);
+            var mkdir_info = await CreateFolder(folder_name, parent_folder_id, info.description);
 
             if (mkdir_info.code != LanZouCode.SUCCESS)
                 return LanZouCode.FAILED;
@@ -536,7 +536,7 @@ namespace LanZouAPI
             else if (mkdir_info.id == folder_id)            // 移动文件夹到同一目录
                 return LanZouCode.FAILED;
 
-            var code = await SetFolderPassword(mkdir_info.id, info.pwd);     // 保持密码相同
+            var code = await SetFolderPassword(mkdir_info.id, info.password);     // 保持密码相同
             if (code != LanZouCode.SUCCESS)
                 return code;
 
@@ -580,7 +580,7 @@ namespace LanZouAPI
             if (info.code != LanZouCode.SUCCESS)
                 return new DownloadInfo(info.code);
 
-            return await DownloadFileByUrl(info.url, save_dir, info.pwd, overwrite, progress);
+            return await DownloadFileByUrl(info.url, save_dir, info.password, overwrite, progress);
         }
 
         /// <summary>
@@ -841,8 +841,8 @@ namespace LanZouAPI
                     {
                         using (var netStream = await client.GetStreamAsync(info.durl))
                         {
-                           using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
-                                FileAccess.Write, FileShare.Read, chunk_size))
+                            using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
+                                 FileAccess.Write, FileShare.Read, chunk_size))
                             {
                                 while (true)
                                 {
@@ -913,6 +913,7 @@ namespace LanZouAPI
             string f_time;
             string f_size;
             string f_desc;
+            string f_type;
 
             // 这里获取下载直链 304 重定向前的链接
             if (first_page.Contains("id=\"pwdload\"") || first_page.Contains("id=\"passwddiv\""))   // 文件设置了提取码时
@@ -928,12 +929,17 @@ namespace LanZouAPI
 
                 link_info = JsonMapper.ToObject(link_info_str);
                 second_page = remove_notes(second_page);
+
                 // 提取文件信息
                 f_name = link_info["inf"].ToString().Replace("*", "_");
+                f_type = Path.GetExtension(f_name).Substring(1);
+
                 var f_size_match = Regex.Match(second_page, "大小.+?(\\d[\\d.,]+\\s?[BKM]?)<");
                 f_size = f_size_match.Success ? f_size_match.Groups[1].Value.Replace(",", "") : "0 M";
+
                 var f_time_match = Regex.Match(second_page, "class=\"n_file_infos\">(.+?)</span>");
                 f_time = f_time_match.Success ? time_format(f_time_match.Groups[1].Value) : time_format("0 小时前");
+
                 var f_desc_match = Regex.Match(second_page, "class=\"n_box_des\">(.*?)</div>");
                 f_desc = f_desc_match.Success ? f_desc_match.Groups[1].Value : "";
             }
@@ -953,6 +959,8 @@ namespace LanZouAPI
                 else
                     f_name = "未匹配到文件名";
 
+                f_type = Path.GetExtension(f_name).Substring(1);
+
                 // 匹配文件时间，文件没有时间信息就视为今天，统一表示为 2020-01-01 格式
                 var f_time_match = Regex.Match(first_page, @">(\d+\s?[秒天分小][钟时]?前|[昨前]天\s?[\d:]+?|\d+\s?天前|\d{4}-\d\d-\d\d)<");
                 f_time = f_time_match.Success ? time_format(f_time_match.Groups[1].Value) : time_format("0 小时前");
@@ -967,7 +975,8 @@ namespace LanZouAPI
 
                 first_page = await _get_text(_host_url + para);
                 if (string.IsNullOrEmpty(first_page))
-                    return new CloudFileInfo(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileInfo(LanZouCode.NETWORK_ERROR, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
+
                 first_page = remove_notes(first_page);
                 // 一般情况 sign 的值就在 data 里，有时放在变量后面
                 var sign = Regex.Match(first_page, "'sign':(.+?),").Groups[1].Value;
@@ -976,13 +985,14 @@ namespace LanZouAPI
                 var post_data = _post_data("action", "downprocess", "sign", $"{sign}", "ves", $"{1}");
                 var link_info_str = await _post_text(_host_url + "/ajaxm.php", post_data);
                 if (string.IsNullOrEmpty(link_info_str))
-                    return new CloudFileInfo(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileInfo(LanZouCode.NETWORK_ERROR, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
+
                 link_info = JsonMapper.ToObject(link_info_str);
             }
 
             // 这里开始获取文件直链
             if ((int)link_info["zt"] != 1)  //# 返回信息异常，无法获取直链
-                return new CloudFileInfo(LanZouCode.FAILED, f_name, f_time, f_size, f_desc, pwd, share_url);
+                return new CloudFileInfo(LanZouCode.FAILED, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
             string download_page_html = null;
@@ -993,7 +1003,7 @@ namespace LanZouAPI
                 using (var resp = await client.GetAsync(fake_url))
                 {
                     if (resp.StatusCode != HttpStatusCode.Found)
-                        return new CloudFileInfo(LanZouCode.NETWORK_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                        return new CloudFileInfo(LanZouCode.NETWORK_ERROR, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
 
                     redirect_url = resp.Headers.Location.AbsoluteUri;// 重定向后的真直链
 
@@ -1020,11 +1030,10 @@ namespace LanZouAPI
                 var json = JsonMapper.ToObject(text);
                 direct_url = json["url"].ToString();
                 if (string.IsNullOrEmpty(direct_url))
-                    return new CloudFileInfo(LanZouCode.CAPTCHA_ERROR, f_name, f_time, f_size, f_desc, pwd, share_url);
+                    return new CloudFileInfo(LanZouCode.CAPTCHA_ERROR, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
             }
 
-            var f_type = Path.GetExtension(f_name).Substring(1);
-            return new CloudFileInfo(LanZouCode.SUCCESS, f_name, f_time, f_size, f_desc, pwd, share_url, f_type, direct_url);
+            return new CloudFileInfo(LanZouCode.SUCCESS, pwd, share_url, f_name, f_type, f_time, f_size, f_desc, direct_url);
         }
 
         /// <summary>
@@ -1105,7 +1114,7 @@ namespace LanZouAPI
                 var url = _host_url + m.Groups[0].Value;
                 var name = m.Groups[1].Value;
                 var desc = m.Groups[2].Value;
-                var folder = new SubFolder() { name = name, desc = desc, url = url };
+                var folder = new SubFolder() { name = name, description = desc, url = url };
                 sub_folders.Add(folder);
             }
             LogInfo($"Get folder info, sub folders: {sub_folders.Count}");

@@ -92,9 +92,9 @@ namespace Test
             }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
-            Assert.IsTrue(!string.IsNullOrEmpty(info.share_url));
-            Assert.IsTrue(!string.IsNullOrEmpty(info.filename));
-            Assert.IsTrue(File.Exists(info.file_path));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
+            Assert.IsTrue(File.Exists(info.filePath));
 
             Assert.IsTrue(isStartOK);
             Assert.IsTrue(isReadyOK);
@@ -126,9 +126,9 @@ namespace Test
             }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
-            Assert.IsTrue(!string.IsNullOrEmpty(info.share_url));
-            Assert.IsTrue(!string.IsNullOrEmpty(info.filename));
-            Assert.IsTrue(info.file_id != 0);
+            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
+            Assert.IsTrue(info.id != 0);
 
             Assert.IsTrue(isStartOK);
             Assert.IsTrue(isReadyOK);
