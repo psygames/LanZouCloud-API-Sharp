@@ -28,11 +28,26 @@ namespace LanZouAPI
         /// 结果码返回为错误时的消息
         /// </summary>
         public string errorMessage { get; internal set; }
+
+        internal Result() { }
+
+        public Result(LanZouCode code, string errorMessage)
+        {
+            this.code = code;
+            this.errorMessage = errorMessage;
+        }
     }
 
     internal class MoveFolderList : Result
     {
         internal Dictionary<long, string> folders { get; set; }
+
+        internal MoveFolderList(LanZouCode code, string errorMessage, Dictionary<long, string> folders)
+        {
+            this.code = code;
+            this.errorMessage = errorMessage;
+            this.folders = folders;
+        }
     }
 
     public class CloudFile : JsonStringObject
@@ -107,6 +122,13 @@ namespace LanZouAPI
         /// 文件列表
         /// </summary>
         public List<CloudFile> files { get; internal set; }
+
+        internal CloudFileList(LanZouCode code, string errorMessage, List<CloudFile> files = null)
+        {
+            this.code = code;
+            this.errorMessage = errorMessage;
+            this.files = files;
+        }
     }
 
     public class CloudFolderList : Result
@@ -115,6 +137,13 @@ namespace LanZouAPI
         /// 文件夹列表
         /// </summary>
         public List<CloudFolder> folders { get; internal set; }
+
+        internal CloudFolderList(LanZouCode code, string errorMessage, List<CloudFolder> folders = null)
+        {
+            this.code = code;
+            this.errorMessage = errorMessage;
+            this.folders = folders;
+        }
     }
 
     /// <summary>
@@ -162,11 +191,12 @@ namespace LanZouAPI
         /// </summary>
         public string durl { get; internal set; }
 
-        internal CloudFileInfo(LanZouCode code, string password = null, string url = null,
+        internal CloudFileInfo(LanZouCode code, string errorMessage, string password = null, string url = null,
              string name = null, string type = null, string time = null, string size = null,
              string description = null, string durl = null)
         {
             this.code = code;
+            this.errorMessage = errorMessage;
             this.password = password;
             this.url = url;
             this.name = name;
@@ -276,15 +306,13 @@ namespace LanZouAPI
         /// </summary>
         public List<SubFile> files { get; internal set; }
 
-        internal CloudFolderInfo(LanZouCode code)
+        internal CloudFolderInfo(LanZouCode code, string errorMessage, long id = 0,
+            string name = null, string time = null, string password = null,
+            string description = null, string url = null,
+            List<SubFolder> folders = null, List<SubFile> files = null)
         {
             this.code = code;
-        }
-
-        internal CloudFolderInfo(LanZouCode code, long id, string name, string time, string password,
-            string description, string url, List<SubFolder> folders, List<SubFile> files)
-        {
-            this.code = code;
+            this.errorMessage = errorMessage;
             this.id = id;
             this.name = name;
             this.time = time;
@@ -321,14 +349,12 @@ namespace LanZouAPI
         /// </summary>
         public string password { get; internal set; }
 
-        internal ShareInfo(LanZouCode code)
+        internal ShareInfo(LanZouCode code, string errorMessage,
+            string name = null, string url = null, string description = null,
+            string password = null)
         {
             this.code = code;
-        }
-
-        internal ShareInfo(LanZouCode code, string name, string url, string description, string password)
-        {
-            this.code = code;
+            this.errorMessage = errorMessage;
             this.description = description;
             this.name = name;
             this.password = password;
@@ -356,14 +382,11 @@ namespace LanZouAPI
         /// </summary>
         public string description { get; internal set; }
 
-        internal CreateFolderInfo(LanZouCode code)
+        internal CreateFolderInfo(LanZouCode code, string errorMessage,
+            long id = 0, string name = null, string description = null)
         {
             this.code = code;
-        }
-
-        internal CreateFolderInfo(LanZouCode code, long id, string name, string description)
-        {
-            this.code = code;
+            this.errorMessage = errorMessage;
             this.id = id;
             this.name = name;
             this.description = description;
@@ -397,15 +420,15 @@ namespace LanZouAPI
         /// </summary>
         public bool isContinue { get; internal set; }
 
-        internal DownloadInfo(LanZouCode code, string errorMessage, string share_url = null,
-            string filename = null, string file_path = null, bool is_continue = false)
+        internal DownloadInfo(LanZouCode code, string errorMessage, string url = null,
+            string fileName = null, string filePath = null, bool isContinue = false)
         {
             this.code = code;
             this.errorMessage = errorMessage;
-            this.url = share_url;
-            this.fileName = filename;
-            this.filePath = file_path;
-            this.isContinue = is_continue;
+            this.url = url;
+            this.fileName = fileName;
+            this.filePath = filePath;
+            this.isContinue = isContinue;
         }
     }
 
@@ -431,15 +454,15 @@ namespace LanZouAPI
         /// </summary>
         public string url { get; internal set; }
 
-        internal UploadInfo(LanZouCode code, string errorMessage, string filename = null,
-            string file_path = null, long file_id = 0, string share_url = null)
+        internal UploadInfo(LanZouCode code, string errorMessage, string fileName = null,
+            string filePath = null, long id = 0, string url = null)
         {
             this.code = code;
             this.errorMessage = errorMessage;
-            this.fileName = filename;
-            this.filePath = file_path;
-            this.id = file_id;
-            this.url = share_url;
+            this.fileName = fileName;
+            this.filePath = filePath;
+            this.id = id;
+            this.url = url;
         }
     }
 
