@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -138,6 +138,17 @@ namespace LanZouAPI
             if (!text.Contains("zt\":1"))
                 return LanZouCode.FAILED;
             return LanZouCode.SUCCESS;
+        }
+
+        private string _rescode_msg(LanZouCode code)
+        {
+            if (code == LanZouCode.NETWORK_ERROR)
+                return "Network error, please retry later.";
+            else if (code == LanZouCode.NOT_LOGIN)
+                return "You are not login, please login and retry.";
+            else if (code == LanZouCode.FAILED)
+                return "Unknown reason, but just Failed.";
+            return code.ToString();
         }
 
         /// <summary>

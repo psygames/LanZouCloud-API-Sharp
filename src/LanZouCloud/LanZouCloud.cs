@@ -1,4 +1,4 @@
-using LitJson;
+﻿using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -393,7 +393,7 @@ namespace LanZouAPI
 
             if (!result.Contains("zt\":1"))
             {
-                LogWarning($"Mkdir {folder_name} error, parent_id={parent_id}");
+                Log($"Mkdir {folder_name} error, parent_id={parent_id}", LogLevel.Warning, nameof(CreateFolder));
                 return new CreateFolderInfo(LanZouCode.MKDIR_ERROR);
             }
 
@@ -407,12 +407,12 @@ namespace LanZouAPI
                 if (!raw_move_folder_list.folders.ContainsKey(kv.Key)) // 不在原始列表中，即新增文件夹
                 {
                     // 创建文件夹成功
-                    LogInfo($"Mkdir {folder_name} #{kv.Key} in parent_id:{parent_id}");
+                    Log($"Mkdir {folder_name} #{kv.Key} in parent_id:{parent_id}", LogLevel.Info, nameof(CreateFolder));
                     return new CreateFolderInfo(LanZouCode.SUCCESS, kv.Key, kv.Value, desc);
                 }
             }
 
-            LogWarning($"Mkdir {folder_name} error, parent_id:{parent_id}");
+            Log($"Mkdir {folder_name} error, parent_id:{parent_id}", LogLevel.Warning, nameof(CreateFolder));
             return new CreateFolderInfo(LanZouCode.MKDIR_ERROR);
         }
 
@@ -487,7 +487,7 @@ namespace LanZouAPI
             // 移动回收站文件也返回成功(实际上行不通) (+_+)?
             var post_data = _post_data("task", $"{20}", "file_id", $"{file_id}", "folder_id", $"{parent_folder_id}");
             var result = await _post_text(_doupload_url, post_data);
-            LogInfo($"Move file file_id:{file_id} to folder_id:{parent_folder_id}");
+            Log($"Move file file_id:{file_id} to folder_id:{parent_folder_id}", LogLevel.Info, nameof(MoveFile));
             return _get_rescode(result);
         }
 
@@ -510,7 +510,7 @@ namespace LanZouAPI
 
             if (!move_folder_list.folders.TryGetValue(folder_id, out var folder_name))
             {
-                LogWarning($"Not found folder id: {folder_id}");
+                Log($"Not found folder id: {folder_id}", LogLevel.Warning, nameof(MoveFolder));
                 return LanZouCode.FAILED;
             }
 
@@ -522,7 +522,7 @@ namespace LanZouAPI
             // 递归操作可能会产生大量请求,这里只允许移动单层文件夹
             if (sub_folder_list.folders.Count > 0)
             {
-                LogWarning($"Found subdirectory in folder id: {folder_id}");
+                Log($"Found subdirectory in folder id: {folder_id}", LogLevel.Warning, nameof(MoveFolder));
                 return LanZouCode.FAILED;
             }
 
@@ -550,7 +550,7 @@ namespace LanZouAPI
                 code = await MoveFile(file.id, mkdir_info.id);
                 if (code != LanZouCode.SUCCESS)
                 {
-                    LogWarning($"Move file Failed id：{file.id}");
+                    Log($"Move file Failed id：{file.id}", LogLevel.Warning, nameof(MoveFolder));
                     return LanZouCode.FAILED;
                 }
             }
@@ -578,7 +578,10 @@ namespace LanZouAPI
         {
             var info = await GetFileShareInfo(file_id);
             if (info.code != LanZouCode.SUCCESS)
-                return new DownloadInfo(info.code);
+            {
+                Log(info.errorMessage, LogLevel.Error, nameof(DownloadFile));
+                return new DownloadInfo(info.code, info.errorMessage);
+            }
 
             return await DownloadFileByUrl(info.url, save_dir, info.password, overwrite, progress);
         }
@@ -597,7 +600,10 @@ namespace LanZouAPI
             file_path = file_path.Replace("\\", "/");
 
             if (!File.Exists(file_path))
-                return new UploadInfo(LanZouCode.PATH_ERROR, Path.GetFileName(file_path), file_path);
+            {
+                Log($"File not found: {file_path}", LogLevel.Error, nameof(UploadFile));
+                return new UploadInfo(LanZouCode.PATH_ERROR, $"File not found: {file_path}", Path.GetFileName(file_path), file_path);
+            }
 
             var filename = name_format(Path.GetFileName(file_path));
             var file_size = new FileInfo(file_path).Length;
@@ -606,11 +612,17 @@ namespace LanZouAPI
             progress?.Report(p_start);
 
             if (file_size > _max_size * 1024 * 1024)
-                return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, filename, file_path);
+            {
+                Log($"File size > Max Size({_max_size}MB): {file_path}", LogLevel.Error, nameof(UploadFile));
+                return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"File size > Max Size({_max_size}MB): {file_path}", filename, file_path);
+            }
 
             // 不允许上传的格式
             if (!is_name_valid(file_path))
-                return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, filename, file_path);
+            {
+                Log($"File extension is Limited: {file_path}", LogLevel.Error, nameof(UploadFile));
+                return new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"File extension is Limited: {file_path}", filename, file_path);
+            }
 
             // 文件已经存在同名文件就删除
             if (overwrite)
@@ -619,12 +631,15 @@ namespace LanZouAPI
 
                 var file_list = await GetFileList(folder_id);
                 if (file_list.code != LanZouCode.SUCCESS)
-                    return new UploadInfo(file_list.code, filename, file_path);
+                {
+                    Log(file_list.errorMessage, LogLevel.Error, nameof(UploadFile));
+                    return new UploadInfo(file_list.code, file_list.errorMessage, filename, file_path);
+                }
 
                 var same_files = file_list.files.FindAll(a => a.name == filename);
                 foreach (var file in same_files)
                 {
-                    LogWarning($"Upload file {filename}, overwrite same name file id: {file.id}");
+                    Log($"Upload {filename}, overwrite file id: {file.id}", LogLevel.Info, nameof(UploadFile));
                     await DeleteFile(file.id);
                 }
 
@@ -634,7 +649,7 @@ namespace LanZouAPI
             var p_ready = new ProgressInfo(ProgressState.Ready, filename, 0, file_size);
             progress?.Report(p_ready);
 
-            LogInfo($"Upload file_path:{file_path} to folder_id:{folder_id}");
+            Log($"Upload file: {file_path} to folder id: {folder_id}", LogLevel.Info, nameof(UploadFile));
 
             var post_data = _post_data("task", $"{1}", "folder_id", $"{folder_id}", "id", "WU_FILE_0", "name", $"{filename}");
 
@@ -683,7 +698,10 @@ namespace LanZouAPI
 
             var code = _get_rescode(result);
             if (code != LanZouCode.SUCCESS)
-                return new UploadInfo(code, filename, file_path);
+            {
+                Log(_rescode_msg(code), LogLevel.Error, nameof(UploadFile));
+                return new UploadInfo(code, _rescode_msg(code), filename, file_path);
+            }
 
             var json = JsonMapper.ToObject(result);
             var file_id = long.Parse(json["text"][0]["id"].ToString());
@@ -697,7 +715,7 @@ namespace LanZouAPI
             await Task.Yield(); // 保证 progress report 到达
             await Task.Yield(); // 保证 progress report 到达
 
-            return new UploadInfo(LanZouCode.SUCCESS, filename, file_path, file_id, share_url);
+            return new UploadInfo(LanZouCode.SUCCESS, null, filename, file_path, file_id, share_url);
         }
         #endregion
 
@@ -720,15 +738,23 @@ namespace LanZouAPI
             progress?.Report(p_start);
 
             if (!await is_file_url(share_url))
-                return new DownloadInfo(LanZouCode.URL_INVALID, share_url);
+            {
+                Log($"Url invalid: {share_url}", LogLevel.Error, nameof(DownloadFileByUrl));
+                return new DownloadInfo(LanZouCode.URL_INVALID, $"Url invalid: {share_url}", share_url);
+            }
 
             if (!Directory.Exists(save_dir))
+            {
+                Log($"Save dir not exsit, auto create: {save_dir}", LogLevel.Info, nameof(DownloadFileByUrl));
                 Directory.CreateDirectory(save_dir);
+            }
 
             var info = await GetFileInfoByUrl(share_url, pwd);
             if (info.code != LanZouCode.SUCCESS)
-                return new DownloadInfo(info.code, share_url);
-
+            {
+                Log(info.errorMessage, LogLevel.Error, nameof(DownloadFileByUrl));
+                return new DownloadInfo(info.code, info.errorMessage, share_url);
+            }
 
             // 只请求头
             var _con_len = (await _get_headers(info.durl)).ContentLength;
@@ -738,6 +764,8 @@ namespace LanZouAPI
             // 这时候我们先读取一点数据, 再尝试获取一次, 通常只需读取 1 字节数据
             if (_con_len == null)
             {
+                Log("Not found Content-Length in response headers", LogLevel.Warning, nameof(DownloadFileByUrl));
+
                 push_watch("Download Get Content-Length");
 
                 // 请求内容
@@ -751,13 +779,11 @@ namespace LanZouAPI
                         while (_con_len == null && max_retries > 0)
                         {
                             max_retries -= 1;
-                            LogWarning("Not found Content-Length in response headers");
-                            LogInfo("Read 1 byte from stream...");
                             await _stream.ReadAsync(_buffer, 0, 1);
 
                             // 再请求一次试试，只请求头
                             _con_len = (await _get_headers(info.durl)).ContentLength;
-                            LogInfo($"Content-Length: {_con_len}");
+                            Log($"Retry to get Content-Length: {_con_len}", LogLevel.Info, nameof(DownloadFileByUrl));
                         }
                     }
                 }
@@ -767,7 +793,10 @@ namespace LanZouAPI
 
             // 应该不会出现这种情况
             if (_con_len == null)
-                return new DownloadInfo(LanZouCode.FAILED, share_url, info.name);
+            {
+                Log("Not found Content-Length", LogLevel.Error, nameof(DownloadFileByUrl));
+                return new DownloadInfo(LanZouCode.FAILED, "Not found Content-Length", share_url, info.name);
+            }
 
             var content_length = _con_len.GetValueOrDefault();
 
@@ -781,18 +810,18 @@ namespace LanZouAPI
             {
                 if (overwrite)
                 {
-                    LogInfo($"Overwrite file {file_path}");
-                    File.Delete(file_path); // 删除旧文件
+                    Log($"Overwrite file {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
+                    File.Delete(file_path);     // 删除旧文件
                 }
-                else    // 自动重命名文件
+                else
                 {
-                    file_path = _auto_rename(file_path);
-                    LogInfo($"File has already exists, auto rename to {file_path}");
+                    file_path = _auto_rename(file_path);    // 自动重命名文件
+                    Log($"File has already exists, auto rename to {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
                 }
             }
 
             var tmp_file_path = file_path + ".download";  // 正在下载中的文件名
-            LogInfo($"Save file to tmp path: {tmp_file_path}");
+            Log($"Save file to tmp path: {tmp_file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
 
             // 支持断点续传下载
             long now_size = 0;
@@ -821,7 +850,7 @@ namespace LanZouAPI
 
             if (is_downloaded)
             {
-                LogInfo($"Has already downloaded: {tmp_file_path}");
+                Log($"Has already downloaded: {tmp_file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
                 var p_downloading = new ProgressInfo(ProgressState.Progressing, filename, now_size, content_length);
                 progress?.Report(p_downloading);
             }
@@ -865,7 +894,7 @@ namespace LanZouAPI
             }
 
             // 下载完成，改回正常文件名
-            LogInfo($"Move file to real path: {file_path}");
+            Log($"Move file to real path: {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
             File.Move(tmp_file_path, file_path);
 
             var p_finish = new ProgressInfo(ProgressState.Finish, filename, now_size, content_length);
@@ -874,7 +903,7 @@ namespace LanZouAPI
             await Task.Yield(); // 保证 progress report 到达
             await Task.Yield(); // 保证 progress report 到达
 
-            return new DownloadInfo(LanZouCode.SUCCESS, share_url, filename, file_path, is_continue);
+            return new DownloadInfo(LanZouCode.SUCCESS, null, share_url, filename, file_path, is_continue);
         }
 
         /// <summary>
@@ -898,7 +927,7 @@ namespace LanZouAPI
                 // 若该页面进行了js加密，则进行解密，计算acw_sc__v2，并加入cookie
                 var acw_sc__v2 = calc_acw_sc__v2(first_page);
                 _set_cookie(new Uri(share_url).Host, "acw_sc__v2", $"{acw_sc__v2}");
-                LogInfo($"Set Cookie: acw_sc__v2={acw_sc__v2}");
+                Log($"Set Cookie: acw_sc__v2={acw_sc__v2}", LogLevel.Info, nameof(GetFileInfoByUrl));
                 first_page = await _get_text(share_url);   // 文件分享页面(第一页)
                 if (string.IsNullOrEmpty(first_page))
                     return new CloudFileInfo(LanZouCode.NETWORK_ERROR, pwd, share_url);
@@ -1020,7 +1049,7 @@ namespace LanZouAPI
             }
             else // 遇到验证码，验证后才能获取下载直链
             {
-                LogWarning($"Get direct url need verify code, force sleep 2 seconds.");
+                Log($"Get direct url need verify code, force sleep 2 seconds.", LogLevel.Warning, nameof(GetFileInfoByUrl));
                 var file_token = Regex.Match(download_page_html, "'file':'(.+?)'").Value;
                 var file_sign = Regex.Match(download_page_html, "'sign':'(.+?)'").Value;
                 var check_api = "https://vip.d0.baidupan.com/file/ajax.php";
@@ -1065,7 +1094,7 @@ namespace LanZouAPI
                 // 若该页面进行了js加密，则进行解密，计算acw_sc__v2，并加入cookie
                 var acw_sc__v2 = calc_acw_sc__v2(html);
                 _set_cookie(new Uri(share_url).Host, "acw_sc__v2", acw_sc__v2);
-                LogInfo($"Set Cookie: acw_sc__v2={acw_sc__v2}");
+                Log($"Set Cookie: acw_sc__v2={acw_sc__v2}", LogLevel.Info, nameof(GetFolderInfoByUrl));
                 html = await _get_text(share_url);  // 文件分享页面(第一页)
             }
 
@@ -1117,7 +1146,7 @@ namespace LanZouAPI
                 var folder = new SubFolder() { name = name, description = desc, url = url };
                 sub_folders.Add(folder);
             }
-            LogInfo($"Get folder info, sub folders: {sub_folders.Count}");
+            Log($"Get folder info, sub folders: {sub_folders.Count}", LogLevel.Info, nameof(GetFolderInfoByUrl));
 
             // 提取文件夹下全部文件
             var page = 1;
@@ -1127,7 +1156,7 @@ namespace LanZouAPI
                 if (page >= 2)  // 连续的请求需要稍等一下
                     await Task.Delay(600);
 
-                LogInfo($"Get folder info parse page {page}...");
+                Log($"Get folder info parse page {page}...", LogLevel.Info, nameof(GetFolderInfoByUrl));
 
                 var post_data = _post_data("lx", lx, "pg", $"{page}", "k", k, "t", t, "fid", $"{folder_id}", "pwd", pwd);
                 var text = await _post_text(_host_url + "/filemoreajax.php", post_data);
@@ -1171,7 +1200,7 @@ namespace LanZouAPI
                 }
             }
 
-            LogInfo($"Get folder info, sub files: {sub_files.Count}");
+            Log($"Get folder info, sub files: {sub_files.Count}", LogLevel.Info, nameof(GetFolderInfoByUrl));
 
             return new CloudFolderInfo(LanZouCode.SUCCESS, folder_id, folder_name, folder_time, pwd,
                 folder_desc, share_url, sub_folders, sub_files);

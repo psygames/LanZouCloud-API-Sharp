@@ -1,4 +1,4 @@
-using LitJson;
+﻿using LitJson;
 using System.Collections.Generic;
 
 namespace LanZouAPI
@@ -162,7 +162,7 @@ namespace LanZouAPI
         /// </summary>
         public string durl { get; internal set; }
 
-        public CloudFileInfo(LanZouCode code, string password = null, string url = null,
+        internal CloudFileInfo(LanZouCode code, string password = null, string url = null,
              string name = null, string type = null, string time = null, string size = null,
              string description = null, string durl = null)
         {
@@ -276,12 +276,12 @@ namespace LanZouAPI
         /// </summary>
         public List<SubFile> files { get; internal set; }
 
-        public CloudFolderInfo(LanZouCode code)
+        internal CloudFolderInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public CloudFolderInfo(LanZouCode code, long id, string name, string time, string password,
+        internal CloudFolderInfo(LanZouCode code, long id, string name, string time, string password,
             string description, string url, List<SubFolder> folders, List<SubFile> files)
         {
             this.code = code;
@@ -321,12 +321,12 @@ namespace LanZouAPI
         /// </summary>
         public string password { get; internal set; }
 
-        public ShareInfo(LanZouCode code)
+        internal ShareInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public ShareInfo(LanZouCode code, string name, string url, string description, string password)
+        internal ShareInfo(LanZouCode code, string name, string url, string description, string password)
         {
             this.code = code;
             this.description = description;
@@ -356,12 +356,12 @@ namespace LanZouAPI
         /// </summary>
         public string description { get; internal set; }
 
-        public CreateFolderInfo(LanZouCode code)
+        internal CreateFolderInfo(LanZouCode code)
         {
             this.code = code;
         }
 
-        public CreateFolderInfo(LanZouCode code, long id, string name, string description)
+        internal CreateFolderInfo(LanZouCode code, long id, string name, string description)
         {
             this.code = code;
             this.id = id;
@@ -397,10 +397,11 @@ namespace LanZouAPI
         /// </summary>
         public bool isContinue { get; internal set; }
 
-        public DownloadInfo(LanZouCode code, string share_url = null,
+        internal DownloadInfo(LanZouCode code, string errorMessage, string share_url = null,
             string filename = null, string file_path = null, bool is_continue = false)
         {
             this.code = code;
+            this.errorMessage = errorMessage;
             this.url = share_url;
             this.fileName = filename;
             this.filePath = file_path;
@@ -430,10 +431,11 @@ namespace LanZouAPI
         /// </summary>
         public string url { get; internal set; }
 
-        public UploadInfo(LanZouCode code, string filename = null,
+        internal UploadInfo(LanZouCode code, string errorMessage, string filename = null,
             string file_path = null, long file_id = 0, string share_url = null)
         {
             this.code = code;
+            this.errorMessage = errorMessage;
             this.fileName = filename;
             this.filePath = file_path;
             this.id = file_id;
