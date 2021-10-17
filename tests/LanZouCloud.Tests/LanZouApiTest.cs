@@ -112,7 +112,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.UploadFile(@"download/WwiseLauncher.exe", -1, true,
+            var info = await cloud.UploadFile(@"download/气功.docx", -1, true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -803,8 +804,6 @@ namespace LanZouAPI
 
             Log($"Upload file: {file_path} to folder id: {folder_id}", LogLevel.Info, nameof(UploadFile));
 
-            var post_data = _post_data("task", $"{1}", "folder_id", $"{folder_id}", "id", "WU_FILE_0", "name", $"{filename}");
-
             string result;
 
             push_watch("Upload Stream");
@@ -812,11 +811,25 @@ namespace LanZouAPI
             using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 var _content = new MultipartFormDataContent();
-                foreach (var item in post_data)
+
+                _content.Add(new StringContent("1"), "task");
+                _content.Add(new StringContent(folder_id.ToString()), "folder_id");
+                _content.Add(new StringContent("WU_FILE_0"), "id");
+                _content.Add(new StringContent(filename, Encoding.UTF8), "name");
+
+                var _scontent = new StreamContent(fileStream);
+                _scontent.Headers.Add("Content-Type", "application/octet-stream");
+
+                // 处理中文乱码问题
+                var _sdisp_u = $"form-data; name=\"upload_file\"; filename=\"{filename}\"";
+                var _sdisp_a = new StringBuilder();
+                foreach (var b in Encoding.UTF8.GetBytes(_sdisp_u))
                 {
-                    _content.Add(new StringContent(item.Value), item.Key);
+                    _sdisp_a.Append((char)b);
                 }
-                _content.Add(new StreamContent(fileStream), "upload_file", filename);
+                _scontent.Headers.Add("Content-Disposition", _sdisp_a.ToString());
+
+                _content.Add(_scontent, "upload_file", filename);
 
                 HttpContent content;
                 if (progress != null)
