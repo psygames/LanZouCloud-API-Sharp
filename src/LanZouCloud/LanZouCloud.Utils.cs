@@ -110,7 +110,7 @@ namespace LanZouCloudAPI
             //    return (datetime.today() - timedelta(days = int(days))).strftime('%Y-%m-%d')
             //else:
             //    return time_str
-            return "todo time format";
+            return time_str;
         }
 
         /// <summary>
