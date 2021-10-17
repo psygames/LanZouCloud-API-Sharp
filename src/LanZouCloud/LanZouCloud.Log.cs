@@ -73,7 +73,9 @@ namespace LanZouCloudAPI
         private void Print(string log, LogLevel level)
         {
 #if UNITY_5_3_OR_NEWER
-            UnityEngine.Debug.LogError($"{log}");
+            if (level == LogLevel.Info) UnityEngine.Debug.Log($"{log}");
+            else if (level == LogLevel.Warning) UnityEngine.Debug.LogWarning($"{log}");
+            else if (level == LogLevel.Error) UnityEngine.Debug.LogError($"{log}");
 #else
             Console.WriteLine($"{log}");
 #endif

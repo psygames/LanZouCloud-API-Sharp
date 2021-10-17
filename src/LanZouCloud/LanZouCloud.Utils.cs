@@ -135,7 +135,7 @@ namespace LanZouCloudAPI
                 return LanZouCode.NETWORK_ERROR;
             if (text.Contains("info\":\"login not"))
                 return LanZouCode.NOT_LOGIN;
-            if (!text.Contains("zt\":1"))
+            if (!text.Contains("zt\":1") && !text.Contains("zt\":2"))
                 return LanZouCode.FAILED;
             return LanZouCode.SUCCESS;
         }
