@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LanZouAPI
+namespace LanZouCloudAPI
 {
     public partial class LanZouCloud
     {
@@ -49,15 +49,15 @@ namespace LanZouAPI
             }
 
             // log format:
-            // time|level|module|log
+            // time|lanzou|level|module|log
             // example:
-            // 11.22.03.456|E|Login|login failed cause network error.
+            // 11.22.03.456|LanZou|E|Login|login failed cause network error.
             var time = DateTime.Now.ToString("HH:mm:ss.fff");
             var _level = level.ToString().Substring(0, 1);
             var _max_module_lens = 16;
             if (module.Length > _max_module_lens) module = module.Substring(0, _max_module_lens);
             else if (module.Length < _max_module_lens) module = module + new string(' ', _max_module_lens - module.Length);
-            var _log = $"[LanZouCloud] {time}|{_level}|{module}|{log}";
+            var _log = $"{time}|LanZou|{_level}|{module}|{log}";
 
             if (_print_log_level >= level)
             {

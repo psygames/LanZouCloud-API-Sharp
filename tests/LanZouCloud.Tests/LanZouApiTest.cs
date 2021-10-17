@@ -1,7 +1,7 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Threading.Tasks;
-using LanZouAPI;
+using LanZouCloudAPI;
 using System;
 
 namespace Test

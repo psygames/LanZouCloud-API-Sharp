@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace LanZouAPI
+namespace LanZouCloudAPI
 {
     public partial class LanZouCloud
     {
@@ -804,58 +804,72 @@ namespace LanZouAPI
 
             Log($"Upload file: {file_path} to folder id: {folder_id}", LogLevel.Info, nameof(UploadFile));
 
-            string result;
+            string result = null;
 
             push_watch("Upload Stream");
 
-            using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            var upload_url = "https://pc.woozooo.com/fileup.php";
+
+            for (int i = 0; i < http_retries; i++)
             {
-                var _content = new MultipartFormDataContent();
-
-                _content.Add(new StringContent("1"), "task");
-                _content.Add(new StringContent(folder_id.ToString()), "folder_id");
-                _content.Add(new StringContent("WU_FILE_0"), "id");
-                _content.Add(new StringContent(filename, Encoding.UTF8), "name");
-
-                var _scontent = new StreamContent(fileStream);
-                _scontent.Headers.Add("Content-Type", "application/octet-stream");
-
-                // 处理中文乱码问题
-                var _sdisp_u = $"form-data; name=\"upload_file\"; filename=\"{filename}\"";
-                var _sdisp_a = new StringBuilder();
-                foreach (var b in Encoding.UTF8.GetBytes(_sdisp_u))
+                try
                 {
-                    _sdisp_a.Append((char)b);
-                }
-                _scontent.Headers.Add("Content-Disposition", _sdisp_a.ToString());
-
-                _content.Add(_scontent, "upload_file", filename);
-
-                HttpContent content;
-                if (progress != null)
-                {
-                    var p_uploading = new ProgressInfo(ProgressState.Progressing, filename, 0, file_size);
-                    content = new ProgressableStreamContent(_content, _chunk_size, (_current, _total) =>
+                    using (var fileStream = new FileStream(file_path, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
-                        p_uploading.current = _current;
-                        p_uploading.total = _total;
-                        progress?.Report(p_uploading);
-                    });
-                }
-                else
-                {
-                    content = _content;
-                }
+                        var _content = new MultipartFormDataContent();
 
-                using (content)
-                {
-                    using (var client = _get_client(null, 3600))
-                    {
-                        using (var resp = await client.PostAsync("https://pc.woozooo.com/fileup.php", content))
+                        _content.Add(new StringContent("1"), "task");
+                        _content.Add(new StringContent(folder_id.ToString()), "folder_id");
+                        _content.Add(new StringContent("WU_FILE_0"), "id");
+                        _content.Add(new StringContent(filename, Encoding.UTF8), "name");
+
+                        var _scontent = new StreamContent(fileStream);
+                        _scontent.Headers.Add("Content-Type", "application/octet-stream");
+
+                        // 处理中文乱码问题
+                        var _sdisp_u = $"form-data; name=\"upload_file\"; filename=\"{filename}\"";
+                        var _sdisp_a = new StringBuilder();
+                        foreach (var b in Encoding.UTF8.GetBytes(_sdisp_u))
                         {
-                            result = await resp.Content.ReadAsStringAsync();
+                            _sdisp_a.Append((char)b);
+                        }
+                        _scontent.Headers.Add("Content-Disposition", _sdisp_a.ToString());
+
+                        _content.Add(_scontent, "upload_file", filename);
+
+                        HttpContent content;
+                        if (progress != null)
+                        {
+                            var p_uploading = new ProgressInfo(ProgressState.Progressing, filename, 0, file_size);
+                            content = new ProgressableStreamContent(_content, _chunk_size, (_current, _total) =>
+                            {
+                                p_uploading.current = _current;
+                                p_uploading.total = _total;
+                                progress?.Report(p_uploading);
+                            });
+                        }
+                        else
+                        {
+                            content = _content;
+                        }
+                        using (content)
+                        {
+                            using (var client = _get_client(null, 3600))
+                            {
+                                using (var resp = await client.PostAsync(upload_url, content))
+                                {
+                                    resp.EnsureSuccessStatusCode();
+                                    result = await resp.Content.ReadAsStringAsync();
+                                }
+                            }
                         }
                     }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(UploadFile));
+                    if (i < http_retries) Log($"Retry({i + 1}): {upload_url}", LogLevel.Info, nameof(UploadFile));
                 }
             }
 
@@ -922,7 +936,7 @@ namespace LanZouAPI
             }
 
             // 只请求头
-            var _con_len = (await _get_headers(info.durl)).ContentLength;
+            var _con_len = (await _get_headers(info.durl))?.ContentLength;
 
             // 对于 txt 文件, 可能出现没有 Content-Length 的情况
             // 此时文件需要下载一次才会出现 Content-Length
@@ -933,23 +947,35 @@ namespace LanZouAPI
 
                 push_watch("Download Get Content-Length");
 
-                // 请求内容
-                using (var client = _get_client())
+                for (int i = 0; i < http_retries; i++)
                 {
-                    using (var _stream = await client.GetStreamAsync(info.durl))
+                    try
                     {
-                        var _buffer = new byte[1];
-                        var max_retries = 5;  // 5 次拿不到就算了
-
-                        while (_con_len == null && max_retries > 0)
+                        // 请求内容
+                        using (var client = _get_client())
                         {
-                            max_retries -= 1;
-                            await _stream.ReadAsync(_buffer, 0, 1);
+                            using (var _stream = await client.GetStreamAsync(info.durl))
+                            {
+                                var _buffer = new byte[1];
+                                var max_retries = 5;  // 5 次拿不到就算了
 
-                            // 再请求一次试试，只请求头
-                            _con_len = (await _get_headers(info.durl)).ContentLength;
-                            Log($"Retry to get Content-Length: {_con_len}", LogLevel.Info, nameof(DownloadFileByUrl));
+                                while (_con_len == null && max_retries > 0)
+                                {
+                                    max_retries -= 1;
+                                    await _stream.ReadAsync(_buffer, 0, 1);
+
+                                    // 再请求一次试试，只请求头
+                                    _con_len = (await _get_headers(info.durl))?.ContentLength;
+                                    Log($"Retry to get Content-Length: {_con_len}", LogLevel.Info, nameof(DownloadFileByUrl));
+                                }
+                            }
                         }
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                        if (i < http_retries) Log($"Retry({i + 1}): {info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                     }
                 }
 
@@ -1012,12 +1038,14 @@ namespace LanZouAPI
 
             var p_ready = new ProgressInfo(ProgressState.Ready, filename, now_size, content_length);
             progress?.Report(p_ready);
+            bool isDownloadSuccess = false;
 
             if (is_downloaded)
             {
                 Log($"Has already downloaded: {tmp_file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
                 var p_downloading = new ProgressInfo(ProgressState.Progressing, filename, now_size, content_length);
                 progress?.Report(p_downloading);
+                isDownloadSuccess = true;
             }
             else
             {
@@ -1030,32 +1058,52 @@ namespace LanZouAPI
                     int chunk_size = _chunk_size;
                     var chunk = new byte[chunk_size];
                     var p_downloading = new ProgressInfo(ProgressState.Progressing, filename, now_size, content_length);
-
-                    using (var client = _get_client(headers))
+                    for (int i = 0; i < http_retries; i++)
                     {
-                        using (var netStream = await client.GetStreamAsync(info.durl))
+                        try
                         {
-                            using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
-                                 FileAccess.Write, FileShare.Read, chunk_size))
+                            using (var client = _get_client(headers))
                             {
-                                while (true)
+                                using (var netStream = await client.GetStreamAsync(info.durl))
                                 {
-                                    var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
-                                    if (readLength == 0)
-                                        break;
+                                    using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
+                                         FileAccess.Write, FileShare.Read, chunk_size))
+                                    {
+                                        while (true)
+                                        {
+                                            var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
+                                            if (readLength == 0)
+                                                break;
 
-                                    await fileStream.WriteAsync(chunk, 0, readLength);
-                                    now_size += readLength;
+                                            await fileStream.WriteAsync(chunk, 0, readLength);
+                                            now_size += readLength;
 
-                                    p_downloading.current = now_size;
-                                    progress?.Report(p_downloading);
+                                            p_downloading.current = now_size;
+                                            progress?.Report(p_downloading);
+                                        }
+                                    }
                                 }
                             }
+
+                            isDownloadSuccess = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                            if (i < http_retries) Log($"Retry({i + 1}): {info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                         }
                     }
+
                 });
 
                 pop_watch();
+            }
+
+            if (!isDownloadSuccess)
+            {
+                Log($"Download failed, retry over.", LogLevel.Error, nameof(DownloadFileByUrl));
+                return new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, retry over.");
             }
 
             // 下载完成，改回正常文件名
@@ -1230,22 +1278,34 @@ namespace LanZouAPI
             string download_page_html = null;
             string redirect_url = null;
 
-            using (var client = _get_client(null, 0, false))
+            for (int i = 0; i < http_retries; i++)
             {
-                using (var resp = await client.GetAsync(fake_url))
+                try
                 {
-                    if (resp.StatusCode != HttpStatusCode.Found)
+                    using (var client = _get_client(null, 0, false))
                     {
-                        var _err6 = _rescode_msg(LanZouCode.NETWORK_ERROR) + "[6]";
-                        Log(_err6, LogLevel.Error, nameof(GetFileInfoByUrl));
-                        return new CloudFileInfo(LanZouCode.NETWORK_ERROR, _err6, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
+                        using (var resp = await client.GetAsync(fake_url))
+                        {
+                            if (resp.StatusCode != HttpStatusCode.Found)
+                            {
+                                var _err6 = _rescode_msg(LanZouCode.NETWORK_ERROR) + "[6]";
+                                Log(_err6, LogLevel.Error, nameof(GetFileInfoByUrl));
+                                return new CloudFileInfo(LanZouCode.NETWORK_ERROR, _err6, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
+                            }
+
+                            redirect_url = resp.Headers.Location.AbsoluteUri;// 重定向后的真直链
+
+                            // download_page.encoding = 'utf-8'
+                            download_page_html = await resp.Content.ReadAsStringAsync();
+                            download_page_html = remove_notes(download_page_html);
+                        }
                     }
-
-                    redirect_url = resp.Headers.Location.AbsoluteUri;// 重定向后的真直链
-
-                    // download_page.encoding = 'utf-8'
-                    download_page_html = await resp.Content.ReadAsStringAsync();
-                    download_page_html = remove_notes(download_page_html);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(GetFileInfoByUrl));
+                    if (i < http_retries) Log($"Retry({i + 1}): {fake_url}", LogLevel.Info, nameof(GetFileInfoByUrl));
                 }
             }
 

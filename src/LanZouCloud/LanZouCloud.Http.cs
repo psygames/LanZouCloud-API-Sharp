@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -6,17 +6,75 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
-namespace LanZouAPI
+namespace LanZouCloudAPI
 {
     public partial class LanZouCloud
     {
+        private const int http_retries = 3;
+        private CookieContainer cookieContainer = new CookieContainer();
+        private void _set_cookie(string domain, string name, string value)
+        {
+            cookieContainer.Add(new Cookie(name, value, null, domain));
+        }
+
+        // 需要自己处理超时重试 ！！！
+        private HttpClient _get_client(Dictionary<string, string> headers = null,
+            float timeout = 0, bool allowRedirect = true, string proxy = null)
+        {
+            var handler = new HttpClientHandler();
+            handler.UseCookies = true;
+            handler.AllowAutoRedirect = allowRedirect;
+            handler.CookieContainer = cookieContainer;
+
+            var client = new HttpClient(handler, true);
+
+            headers = headers ?? _headers;
+
+            if (headers != null)
+            {
+                foreach (var item in headers)
+                {
+                    client.DefaultRequestHeaders.Add(item.Key, item.Value);
+                }
+            }
+
+            timeout = timeout > 0 ? timeout : _timeout;
+            client.Timeout = new TimeSpan((long)(timeout * 10000000L));
+
+            proxy = proxy ?? _proxy;
+            if (proxy != null)
+            {
+                handler.UseProxy = true;
+                handler.Proxy = new WebProxy(proxy);
+            }
+
+            return client;
+        }
+
+        #region 网络超时，自动重试
         private async Task<string> _get_text(string url)
         {
             url = fix_url_domain(url);
             string text = null;
-            using (var client = _get_client())
+            for (int i = 0; i < http_retries; i++)
             {
-                text = await client.GetStringAsync(url);
+                try
+                {
+                    using (var client = _get_client())
+                    {
+                        using (var resp = await client.GetAsync(url))
+                        {
+                            resp.EnsureSuccessStatusCode();
+                            text = await resp.Content.ReadAsStringAsync();
+                        }
+                    }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_text));
+                    if (i < http_retries) Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_text));
+                }
             }
             return text;
         }
@@ -25,14 +83,27 @@ namespace LanZouAPI
         {
             url = fix_url_domain(url);
             string text = null;
-            using (var client = _get_client())
+            for (int i = 0; i < http_retries; i++)
             {
-                using (var content = new FormUrlEncodedContent(data))
+                try
                 {
-                    using (var resp = await client.PostAsync(url, content))
+                    using (var client = _get_client())
                     {
-                        text = await resp.Content.ReadAsStringAsync();
+                        using (var content = new FormUrlEncodedContent(data))
+                        {
+                            using (var resp = await client.PostAsync(url, content))
+                            {
+                                resp.EnsureSuccessStatusCode();
+                                text = await resp.Content.ReadAsStringAsync();
+                            }
+                        }
                     }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_post_text));
+                    if (i < http_retries) Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_post_text));
                 }
             }
             return text;
@@ -41,17 +112,47 @@ namespace LanZouAPI
         private async Task<HttpContentHeaders> _get_headers(string url)
         {
             url = fix_url_domain(url);
-            HttpContentHeaders content_headers;
-            using (var client = _get_client(null, 0, false))
+            HttpContentHeaders content_headers = null;
+            for (int i = 0; i < http_retries; i++)
             {
-                using (var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+                try
                 {
-                    content_headers = resp.Content.Headers;
+                    using (var client = _get_client(null, 0, false))
+                    {
+                        using (var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
+                        {
+                            // dont ensure success code, casue code is 502 Bad Gateway
+                            content_headers = resp.Content.Headers;
+                        }
+                    }
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_headers));
+                    if (i < http_retries) Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_headers));
                 }
             }
             return content_headers;
         }
+        #endregion
 
+        private string[] available_domains = new string[]
+        {
+            "lanzoui.com",  // 鲁ICP备15001327号-6, 2020-06-09, SEO 排名最低
+            "lanzoux.com",  // 鲁ICP备15001327号-5, 2020-06-09
+            "lanzous.com",  // 主域名, 备案异常, 部分地区已经无法访问
+        };
+
+        private string fix_url_domain(string url, int index = 0)
+        {
+            if (!url.Contains("lanzous.com")) return url;
+            return url.Replace("lanzous.com", available_domains[index]);
+        }
+
+
+
+        #region 上传进度条
         internal class ProgressableStreamContent : HttpContent
         {
             private HttpContent content;
@@ -109,58 +210,6 @@ namespace LanZouAPI
                 base.Dispose(disposing);
             }
         }
-
-        private CookieContainer cookieContainer = new CookieContainer();
-        private void _set_cookie(string domain, string name, string value)
-        {
-            cookieContainer.Add(new Cookie(name, value, null, domain));
-        }
-
-        private HttpClient _get_client(Dictionary<string, string> headers = null,
-            float timeout = 0, bool allowRedirect = true, string proxy = null)
-        {
-            var handler = new HttpClientHandler();
-            handler.UseCookies = true;
-            handler.AllowAutoRedirect = allowRedirect;
-            handler.CookieContainer = cookieContainer;
-
-            var client = new HttpClient(handler, true);
-
-            headers = headers ?? _headers;
-
-            if (headers != null)
-            {
-                foreach (var item in headers)
-                {
-                    client.DefaultRequestHeaders.Add(item.Key, item.Value);
-                }
-            }
-
-            timeout = timeout > 0 ? timeout : _timeout;
-            client.Timeout = new TimeSpan((long)(timeout * 10000000L));
-
-            proxy = proxy ?? _proxy;
-            if (proxy != null)
-            {
-                handler.UseProxy = true;
-                handler.Proxy = new WebProxy(proxy);
-            }
-
-            return client;
-        }
-
-
-        private string[] available_domains = new string[]
-        {
-            "lanzoui.com",  // 鲁ICP备15001327号-6, 2020-06-09, SEO 排名最低
-            "lanzoux.com",  // 鲁ICP备15001327号-5, 2020-06-09
-            "lanzous.com",  // 主域名, 备案异常, 部分地区已经无法访问
-        };
-
-        private string fix_url_domain(string url, int index = 0)
-        {
-            if (!url.Contains("lanzous.com")) return url;
-            return url.Replace("lanzous.com", available_domains[index]);
-        }
+        #endregion
     }
 }

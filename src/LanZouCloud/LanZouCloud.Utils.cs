@@ -5,7 +5,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace LanZouAPI
+namespace LanZouCloudAPI
 {
     public partial class LanZouCloud
     {

@@ -1,7 +1,7 @@
 ﻿using LitJson;
 using System.Collections.Generic;
 
-namespace LanZouAPI
+namespace LanZouCloudAPI
 {
     /// <summary>
     /// 重写ToString，以JSON格式输出
