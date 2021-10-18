@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Threading.Tasks;
 using LanZouCloudAPI;
@@ -9,11 +9,19 @@ namespace Test
     [TestClass]
     public class LanZouApiTest
     {
+        private LanZouCloud Cloud()
+        {
+            var cloud = new LanZouCloud();
+            cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
+            return cloud;
+        }
+
         private async Task<LanZouCloud> EnsureLoginCloud()
         {
             var cloud = new LanZouCloud();
             cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
-            var login = await cloud.Login("1104264", "VWAHNAJgAjoPPwdhWzVUB1MxDTxdDVA2UmkBZwI0BTdXYl9tVzANNQc9VDcMXwBvVWRSMQpkAGIDOAIzAzYKPVUwB2cCMgI3DzsHYls1VDlTMA09XTJQYlIzATcCNQU1V2FfZFdgDTEHPFRmDGMAU1U0UmgKZQBnAzACYwM1Cj1VZQc9AmM%3D");
+            string[] cookies = File.ReadAllText("cookie.txt").Split(',');
+            var login = await cloud.Login(cookies[0], cookies[1]);
             Assert.IsTrue(login.code == LanZouCode.SUCCESS);
             return cloud;
         }
@@ -90,6 +98,41 @@ namespace Test
                 if (_progress.state == ProgressState.Finish)
                     isFinishOK = true;
             }));
+
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
+            Assert.IsTrue(File.Exists(info.filePath));
+
+            Assert.IsTrue(isStartOK);
+            Assert.IsTrue(isReadyOK);
+            Assert.IsTrue(isDownloadingOK);
+            Assert.IsTrue(isFinishOK);
+        }
+
+
+        [TestMethod]
+        public async Task DownloadFileByUrl()
+        {
+            var cloud = Cloud();
+
+            bool isStartOK = false;
+            bool isReadyOK = false;
+            bool isDownloadingOK = false;
+            bool isFinishOK = false;
+            var url = "https://wwa.lanzoui.com//i934vvi";
+            var info = await cloud.DownloadFileByUrl(url, "download", "", true,
+                new Progress<ProgressInfo>(_progress =>
+                {
+                    if (_progress.state == ProgressState.Start)
+                        isStartOK = true;
+                    if (_progress.state == ProgressState.Ready)
+                        isReadyOK = true;
+                    if (_progress.state == ProgressState.Progressing)
+                        isDownloadingOK = true;
+                    if (_progress.state == ProgressState.Finish)
+                        isFinishOK = true;
+                }));
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));

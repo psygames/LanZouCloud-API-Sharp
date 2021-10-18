@@ -824,8 +824,6 @@ namespace LanZouCloudAPI
                         _content.Add(new StringContent(filename, Encoding.UTF8), "name");
                         _content.Add(new UTF8EncodingStreamContent(fileStream, "upload_file", filename));
 
-                        File.WriteAllBytes("b.txt", await _content.ReadAsByteArrayAsync());
-
                         HttpContent content;
                         if (progress != null)
                         {
@@ -1318,6 +1316,8 @@ namespace LanZouCloudAPI
                     {
                         using (var resp = await client.GetAsync(fake_url))
                         {
+                            // TODO: if Status Code 200, 系统发现您的网络异常，需要验证后下载文件
+
                             if (resp.StatusCode != HttpStatusCode.Found)
                             {
                                 var _err6 = _rescode_msg(LanZouCode.NETWORK_ERROR) + "[6]";
