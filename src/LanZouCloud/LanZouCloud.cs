@@ -1,4 +1,4 @@
-﻿using LitJson;
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -823,17 +823,11 @@ namespace LanZouCloudAPI
                         _content.Add(new StringContent("WU_FILE_0"), "id");
                         _content.Add(new StringContent(filename, Encoding.UTF8), "name");
 
-                        var _scontent = new StreamContent(fileStream);
+                        var _scontent = new Utf8EncodingStreamContent(fileStream, filename);
                         _scontent.Headers.Add("Content-Type", "application/octet-stream");
 
-                        // 处理中文乱码问题
-                        var _sdisp_u = $"form-data; name=\"upload_file\"; filename=\"{filename}\"";
-                        var _sdisp_a = new StringBuilder();
-                        foreach (var b in Encoding.UTF8.GetBytes(_sdisp_u))
-                        {
-                            _sdisp_a.Append((char)b);
-                        }
-                        _scontent.Headers.Add("Content-Disposition", _sdisp_a.ToString());
+                        var _disp = $"form-data; name=\"upload_file\"; filename=\"[_REPLACE_FILE_NAME_]\"";
+                        _scontent.Headers.Add("Content-Disposition", _disp);
 
                         _content.Add(_scontent, "upload_file", filename);
 
@@ -895,6 +889,28 @@ namespace LanZouCloudAPI
             await Task.Yield(); // 保证 progress report 到达
 
             return new UploadInfo(LanZouCode.SUCCESS, null, filename, file_path, file_id, share_url);
+        }
+
+        public class Utf8EncodingStreamContent : StreamContent
+        {
+            string fileName;
+
+            public Utf8EncodingStreamContent(Stream content, string fileName) : base(content)
+            {
+                this.fileName = fileName;
+            }
+
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+                stream.Position = 0;
+                var newHeader = new StreamReader(stream).ReadToEnd().Replace("[_REPLACE_FILE_NAME_]", fileName);
+
+                stream.Position = 0;
+                var bytes = Encoding.UTF8.GetBytes(newHeader);
+                stream.Write(bytes, 0, bytes.Length);
+
+                return base.SerializeToStreamAsync(stream, context);
+            }
         }
         #endregion
 
@@ -1538,5 +1554,6 @@ namespace LanZouCloudAPI
                 folder_desc, share_url, sub_folders, sub_files);
         }
         #endregion
+
     }
 }
