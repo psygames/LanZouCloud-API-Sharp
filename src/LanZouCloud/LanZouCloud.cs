@@ -822,14 +822,9 @@ namespace LanZouCloudAPI
                         _content.Add(new StringContent(folder_id.ToString()), "folder_id");
                         _content.Add(new StringContent("WU_FILE_0"), "id");
                         _content.Add(new StringContent(filename, Encoding.UTF8), "name");
+                        _content.Add(new UTF8EncodingStreamContent(fileStream, "upload_file", filename));
 
-                        var _scontent = new Utf8EncodingStreamContent(fileStream, filename);
-                        _scontent.Headers.Add("Content-Type", "application/octet-stream");
-
-                        var _disp = $"form-data; name=\"upload_file\"; filename=\"[_REPLACE_FILE_NAME_]\"";
-                        _scontent.Headers.Add("Content-Disposition", _disp);
-
-                        _content.Add(_scontent, "upload_file", filename);
+                        File.WriteAllBytes("b.txt", await _content.ReadAsByteArrayAsync());
 
                         HttpContent content;
                         if (progress != null)
@@ -854,6 +849,7 @@ namespace LanZouCloudAPI
                                 {
                                     resp.EnsureSuccessStatusCode();
                                     result = await resp.Content.ReadAsStringAsync();
+                                    Print(JsonMapper.ToObject(result).ToJson(), LogLevel.Info);
                                 }
                             }
                         }
@@ -891,25 +887,45 @@ namespace LanZouCloudAPI
             return new UploadInfo(LanZouCode.SUCCESS, null, filename, file_path, file_id, share_url);
         }
 
-        public class Utf8EncodingStreamContent : StreamContent
+        public class UTF8EncodingStreamContent : StreamContent
         {
             string fileName;
 
-            public Utf8EncodingStreamContent(Stream content, string fileName) : base(content)
+            public UTF8EncodingStreamContent(Stream content, string name, string fileName) : base(content)
             {
                 this.fileName = fileName;
+#if UNITY_5_3_OR_NEWER
+                Headers.Add("Content-Type", "application/octet-stream");
+                Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"_replace_\"");
+#else
+
+                var fn = new StringBuilder();
+                foreach (var b in Encoding.UTF8.GetBytes(fileName))
+                {
+                    fn.Append((char)b);
+                }
+
+                Headers.Add("Content-Type", "application/octet-stream");
+                Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"{fn}\"");
+#endif
             }
 
             protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
+#if UNITY_5_3_OR_NEWER
                 stream.Position = 0;
-                var newHeader = new StreamReader(stream).ReadToEnd().Replace("[_REPLACE_FILE_NAME_]", fileName);
-
-                stream.Position = 0;
+                var header = new StreamReader(stream).ReadToEnd();
+                var newHeader = header.Replace("filename=\"_replace_\"", $"filename=\"{fileName}\"");
                 var bytes = Encoding.UTF8.GetBytes(newHeader);
+                stream.Position = 0;
                 stream.Write(bytes, 0, bytes.Length);
-
+#endif
                 return base.SerializeToStreamAsync(stream, context);
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                return base.TryComputeLength(out length);
             }
         }
         #endregion
