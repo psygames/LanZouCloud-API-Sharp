@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -122,6 +122,31 @@ namespace LanZouCloudAPI
             // 去除其它字符集的空白符,去除重复空白字符
             name = name.Replace("\xa0", " ").Replace("\u3000", " ").Replace("  ", " ");
             return Regex.Replace(name, "[$%^!*<>)(+=`'\"/:;,?]", "");
+        }
+
+        /// <summary>
+        /// 从返回JSON中获得 结果
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        private Result _to_result(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return new Result(LanZouCode.NETWORK_ERROR, "Network error, please retry later.");
+            }
+            if (text.Contains("info\":\"login not"))
+            {
+                return new Result(LanZouCode.NOT_LOGIN, "You are not login, please login and retry.");
+            }
+            if (!text.Contains("zt\":1") && !text.Contains("zt\":2"))
+            {
+                string _err;
+                if (!text.Contains("info\":\"")) _err = text;
+                else _err = JsonMapper.ToObject(text)["info"].ToString();
+                return new(LanZouCode.FAILED, _err);
+            }
+            return new Result(LanZouCode.SUCCESS, "Success");
         }
 
         /// <summary>
