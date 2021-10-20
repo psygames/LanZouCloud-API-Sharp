@@ -222,18 +222,5 @@ namespace LanZouCloudAPI
             var ext = Path.GetExtension(filename).Substring(1);
             return valid_suffix_list.Contains(ext);
         }
-
-        // TODO: Watch push & pop
-        private void push_watch(string key)
-        {
-            // var watch = new Stopwatch();
-            // watch.Start();
-        }
-
-        private void pop_watch()
-        {
-            // watch.Stop();
-            // LogInfo($"[{title}] cost: {watch.Elapsed}");
-        }
     }
 }

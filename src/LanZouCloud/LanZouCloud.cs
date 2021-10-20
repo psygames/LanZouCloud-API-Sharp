@@ -224,18 +224,17 @@ namespace LanZouCloudAPI
         /// 获取文件列表
         /// </summary>
         /// <param name="folder_id">文件夹ID，默认值 -1 表示根路径</param>
-        /// <param name="max_page_count">最大页数</param>
+        /// <param name="start_page">起始页</param>
+        /// <param name="end_page">最大结束页</param>
         /// <returns></returns>
-        public async Task<CloudFileList> GetFileList(long folder_id = -1, int max_page_count = 999)
+        public async Task<CloudFileList> GetFileList(long folder_id = -1, int start_page = 1, int end_page = 9999)
         {
-            // TODO: 添加起始页
-
-            LogInfo($"Get file list of folder id: {folder_id}, max pages count: {max_page_count}", nameof(GetFileList));
+            LogInfo($"Get file list of folder id: {folder_id}, max pages count: {end_page}", nameof(GetFileList));
 
             CloudFileList result;
-            var page = 1;
+            var page = start_page;
             var file_list = new List<CloudFile>();
-            while (page <= max_page_count)
+            while (page <= end_page)
             {
                 var post_data = _post_data("task", $"{5}", "folder_id", $"{folder_id}", "pg", $"{page}");
                 var text = await _post_text(_doupload_url, post_data);
@@ -257,14 +256,14 @@ namespace LanZouCloudAPI
                     var f_json = (JsonData)_json;
                     file_list.Add(new CloudFile()
                     {
-                        id = long.Parse(f_json["id"].ToString()),
-                        name = f_json["name_all"].ToString().Replace("&amp;", "&"),
-                        time = time_format((string)f_json["time"]),                     // 上传时间
-                        size = f_json["size"].ToString().Replace(",", ""),              // 文件大小
+                        id = long.Parse(f_json["id"].ToString()),                               // 文件ID
+                        name = f_json["name_all"].ToString().Replace("&amp;", "&"),             // 文件名
+                        time = time_format((string)f_json["time"]),                             // 上传时间
+                        size = f_json["size"].ToString().Replace(",", ""),                      // 文件大小
                         type = Path.GetExtension(f_json["name_all"].ToString()).Substring(1),   // 文件类型
-                        downloads = int.Parse(f_json["downs"].ToString()),                  // 下载次数
-                        hasPassword = int.Parse(f_json["onof"].ToString()) == 1,            // 是否存在提取码
-                        hasDescription = int.Parse(f_json["is_des"].ToString()) == 1,       // 是否存在描述
+                        downloads = int.Parse(f_json["downs"].ToString()),                      // 下载次数
+                        hasPassword = int.Parse(f_json["onof"].ToString()) == 1,                // 是否存在提取码
+                        hasDescription = int.Parse(f_json["is_des"].ToString()) == 1,           // 是否存在描述
                     });
                 }
 
@@ -320,7 +319,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 通过文件ID，获取文件各种信息(包括下载直链)
         /// </summary>
-        /// <param name="file_id"></param>
+        /// <param name="file_id">文件ID</param>
         /// <returns></returns>
         public async Task<CloudFileInfo> GetFileInfo(long file_id)
         {
@@ -346,7 +345,8 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 通过文件夹ID，获取文件夹及其子文件信息
         /// </summary>
-        /// <param name="folder_id"></param>
+        /// <param name="folder_id">文件夹ID</param>
+        /// <param name="max_page_count">官方现在最多只能读取99页</param>
         /// <returns></returns>
         public async Task<CloudFolderInfo> GetFolderInfo(long folder_id, int max_page_count = 99)
         {
@@ -906,8 +906,6 @@ namespace LanZouCloudAPI
 
             string text = null;
 
-            push_watch("Upload Stream");
-
             var upload_url = "https://pc.woozooo.com/fileup.php";
 
             for (int i = 0; i < http_retries; i++)
@@ -960,8 +958,6 @@ namespace LanZouCloudAPI
                     if (i < http_retries) Log($"Retry({i + 1}): {upload_url}", LogLevel.Info, nameof(UploadFile));
                 }
             }
-
-            pop_watch();
 
             var _res = _get_result(text);
             if (_res.code != LanZouCode.SUCCESS)
@@ -1039,8 +1035,6 @@ namespace LanZouCloudAPI
             {
                 Log("Not found Content-Length in response headers", LogLevel.Warning, nameof(DownloadFileByUrl));
 
-                push_watch("Download Get Content-Length");
-
                 for (int i = 0; i < http_retries; i++)
                 {
                     try
@@ -1072,8 +1066,6 @@ namespace LanZouCloudAPI
                         if (i < http_retries) Log($"Retry({i + 1}): {file_info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                     }
                 }
-
-                pop_watch();
             }
 
             // 应该不会出现这种情况
@@ -1144,8 +1136,6 @@ namespace LanZouCloudAPI
             }
             else
             {
-                push_watch("Download Stream");
-
                 await Task.Run(async () =>
                 {
                     var headers = new Dictionary<string, string>(_headers);
@@ -1197,8 +1187,6 @@ namespace LanZouCloudAPI
                     }
 
                 });
-
-                pop_watch();
             }
 
             if (!isDownloadSuccess)
@@ -1393,8 +1381,6 @@ namespace LanZouCloudAPI
                     {
                         using (var resp = await client.GetAsync(fake_url))
                         {
-                            // TODO: if Status Code 200, 系统发现您的网络异常，需要验证后下载文件
-
                             if (resp.StatusCode == HttpStatusCode.OK)
                             {
                                 // 假直连，需要重新获取
