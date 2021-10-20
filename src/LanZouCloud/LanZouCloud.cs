@@ -228,6 +228,8 @@ namespace LanZouCloudAPI
         /// <returns></returns>
         public async Task<CloudFileList> GetFileList(long folder_id = -1, int max_page_count = 999)
         {
+            // TODO: 添加起始页
+
             LogInfo($"Get file list of folder id: {folder_id}, max pages count: {max_page_count}", nameof(GetFileList));
 
             CloudFileList result;
