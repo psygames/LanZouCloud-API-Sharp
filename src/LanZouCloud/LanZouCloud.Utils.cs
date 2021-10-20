@@ -1,3 +1,4 @@
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -124,20 +125,24 @@ namespace LanZouCloudAPI
             return Regex.Replace(name, "[$%^!*<>)(+=`'\"/:;,?]", "");
         }
 
+        private static readonly string _network_error_msg = "Network error, please retry later";
+        private static readonly string _not_login_msg = "You are not login, please login and retry";
+        private static readonly string _success_msg = "Success";
+
         /// <summary>
         /// 从返回JSON中获得 结果
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        private Result _to_result(string text)
+        private Result _get_result(string text)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return new Result(LanZouCode.NETWORK_ERROR, "Network error, please retry later.");
+                return new Result(LanZouCode.NETWORK_ERROR, _network_error_msg);
             }
             if (text.Contains("info\":\"login not"))
             {
-                return new Result(LanZouCode.NOT_LOGIN, "You are not login, please login and retry.");
+                return new Result(LanZouCode.NOT_LOGIN, _not_login_msg);
             }
             if (!text.Contains("zt\":1") && !text.Contains("zt\":2"))
             {
@@ -146,34 +151,7 @@ namespace LanZouCloudAPI
                 else _err = JsonMapper.ToObject(text)["info"].ToString();
                 return new(LanZouCode.FAILED, _err);
             }
-            return new Result(LanZouCode.SUCCESS, "Success");
-        }
-
-        /// <summary>
-        /// 从返回结果中获得 返回码
-        /// </summary>
-        /// <param name="text"></param>
-        /// <returns></returns>
-        private LanZouCode _get_rescode(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return LanZouCode.NETWORK_ERROR;
-            if (text.Contains("info\":\"login not"))
-                return LanZouCode.NOT_LOGIN;
-            if (!text.Contains("zt\":1") && !text.Contains("zt\":2"))
-                return LanZouCode.FAILED;
-            return LanZouCode.SUCCESS;
-        }
-
-        private string _rescode_msg(LanZouCode code)
-        {
-            if (code == LanZouCode.NETWORK_ERROR)
-                return "Network error, please retry later.";
-            else if (code == LanZouCode.NOT_LOGIN)
-                return "You are not login, please login and retry.";
-            else if (code == LanZouCode.FAILED)
-                return "Unknown reason, but just Failed.";
-            return code.ToString();
+            return new Result(LanZouCode.SUCCESS, _success_msg);
         }
 
         /// <summary>

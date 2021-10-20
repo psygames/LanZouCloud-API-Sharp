@@ -1,4 +1,4 @@
-﻿using LitJson;
+using LitJson;
 using System.Collections.Generic;
 
 namespace LanZouCloudAPI
@@ -25,16 +25,16 @@ namespace LanZouCloudAPI
         public LanZouCode code { get; internal set; }
 
         /// <summary>
-        /// 结果码返回为错误时的消息
+        /// 错误消息 或 成功消息
         /// </summary>
-        public string errorMessage { get; internal set; }
+        public string message { get; internal set; }
 
         internal Result() { }
 
         public Result(LanZouCode code, string errorMessage)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
         }
     }
 
@@ -45,7 +45,7 @@ namespace LanZouCloudAPI
         internal MoveFolderList(LanZouCode code, string errorMessage, Dictionary<long, string> folders)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.folders = folders;
         }
     }
@@ -126,7 +126,7 @@ namespace LanZouCloudAPI
         internal CloudFileList(LanZouCode code, string errorMessage, List<CloudFile> files = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.files = files;
         }
     }
@@ -141,7 +141,7 @@ namespace LanZouCloudAPI
         internal CloudFolderList(LanZouCode code, string errorMessage, List<CloudFolder> folders = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.folders = folders;
         }
     }
@@ -196,7 +196,7 @@ namespace LanZouCloudAPI
              string description = null, string durl = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.password = password;
             this.url = url;
             this.name = name;
@@ -312,7 +312,7 @@ namespace LanZouCloudAPI
             List<SubFolder> folders = null, List<SubFile> files = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.id = id;
             this.name = name;
             this.time = time;
@@ -354,7 +354,7 @@ namespace LanZouCloudAPI
             string password = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.description = description;
             this.name = name;
             this.password = password;
@@ -386,7 +386,7 @@ namespace LanZouCloudAPI
             long id = 0, string name = null, string description = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.id = id;
             this.name = name;
             this.description = description;
@@ -424,7 +424,7 @@ namespace LanZouCloudAPI
             string fileName = null, string filePath = null, bool isContinue = false)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.url = url;
             this.fileName = fileName;
             this.filePath = filePath;
@@ -458,7 +458,7 @@ namespace LanZouCloudAPI
             string filePath = null, long id = 0, string url = null)
         {
             this.code = code;
-            this.errorMessage = errorMessage;
+            this.message = errorMessage;
             this.fileName = fileName;
             this.filePath = filePath;
             this.id = id;

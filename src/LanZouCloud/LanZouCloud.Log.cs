@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace LanZouCloudAPI
 {
@@ -34,6 +34,23 @@ namespace LanZouCloudAPI
         {
             this._print_log_level = printLevel;
             this._write_log_level = writeLevel;
+        }
+
+        private void LogInfo(string msg, string module)
+        {
+            Log(msg, LogLevel.Info, module);
+        }
+
+        private void LogResult(Result result, string module)
+        {
+            if (result.code != LanZouCode.SUCCESS)
+            {
+                Log(result.message, LogLevel.Error, module);
+            }
+            else
+            {
+                Log(result.message, LogLevel.Info, module);
+            }
         }
 
         private void Log(object log, LogLevel level, string module)

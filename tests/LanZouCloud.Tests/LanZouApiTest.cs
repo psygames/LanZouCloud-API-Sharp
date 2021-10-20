@@ -32,6 +32,15 @@ namespace Test
             await EnsureLoginCloud();
         }
 
+
+        [TestMethod]
+        public async Task Logout()
+        {
+            var cloud = await EnsureLoginCloud();
+            var result = await cloud.Logout();
+            Assert.IsTrue(result.code == LanZouCode.SUCCESS);
+        }
+
         [TestMethod]
         public async Task GetFileList()
         {
@@ -69,6 +78,7 @@ namespace Test
             var folderList = await cloud.GetFolderList();
             Assert.IsTrue(folderList.code == LanZouCode.SUCCESS);
 
+            Assert.IsTrue(folderList.folders.Count > 0);
             var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 2);
             Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));

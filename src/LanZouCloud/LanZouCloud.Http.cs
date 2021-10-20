@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace LanZouCloudAPI
@@ -152,14 +153,57 @@ namespace LanZouCloudAPI
 
 
 
-        #region 上传进度条
+        #region 辅助类
+        internal class UTF8EncodingStreamContent : StreamContent
+        {
+            string fileName;
+
+            internal UTF8EncodingStreamContent(Stream content, string name, string fileName) : base(content)
+            {
+                this.fileName = fileName;
+                var fn = new StringBuilder();
+                foreach (var b in Encoding.UTF8.GetBytes(fileName))
+                {
+                    fn.Append((char)b);
+                }
+#if UNITY_5_3_OR_NEWER
+                Headers.Add("Content-Type", "application/octet-stream");
+                Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"{fn}\"");
+#else
+
+                Headers.Add("Content-Type", "application/octet-stream");
+                Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"{fn}\"");
+#endif
+            }
+
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+#if UNITY_5_3_OR_NEWER
+                stream.Position = 0;
+                var header = new StreamReader(stream).ReadToEnd();
+                var h = header.IndexOf("filename=\"") + "filename=\"".Length;
+                var t = header.IndexOf("\"", h);
+                var newHeader = header.Substring(0, h) + fileName + header.Substring(t);
+                var bytes = Encoding.UTF8.GetBytes(newHeader);
+                stream.Position = 0;
+                stream.Write(bytes, 0, bytes.Length);
+#endif
+                return base.SerializeToStreamAsync(stream, context);
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                return base.TryComputeLength(out length);
+            }
+        }
+
         internal class ProgressableStreamContent : HttpContent
         {
             private HttpContent content;
             private int bufferSize;
             private Action<long, long> progress;
 
-            public ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
+            internal ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
             {
                 this.content = content;
                 this.bufferSize = bufferSize;
