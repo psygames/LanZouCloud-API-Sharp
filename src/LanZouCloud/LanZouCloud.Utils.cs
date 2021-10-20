@@ -149,7 +149,7 @@ namespace LanZouCloudAPI
                 string _err;
                 if (!text.Contains("info\":\"")) _err = text;
                 else _err = JsonMapper.ToObject(text)["info"].ToString();
-                return new(LanZouCode.FAILED, _err);
+                return new Result(LanZouCode.FAILED, _err);
             }
             return new Result(LanZouCode.SUCCESS, _success_msg);
         }
