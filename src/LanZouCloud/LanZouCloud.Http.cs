@@ -140,6 +140,7 @@ namespace LanZouCloudAPI
 
         private string[] available_domains = new string[]
         {
+            "lanzouw.com",  // 鲁ICP备15001327号-7, 2021-09-02, SEO 排名最低
             "lanzoui.com",  // 鲁ICP备15001327号-6, 2020-06-09, SEO 排名最低
             "lanzoux.com",  // 鲁ICP备15001327号-5, 2020-06-09
             "lanzous.com",  // 主域名, 备案异常, 部分地区已经无法访问

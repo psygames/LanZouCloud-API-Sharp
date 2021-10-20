@@ -31,8 +31,8 @@ namespace LanZouCloudAPI
         /// <returns></returns>
         private async Task<bool> is_file_url(string share_url)
         {
-            var base_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[six].com/.+";  // 子域名可个性化设置或者不存在
-            var user_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[six].com/i[a-zA-Z0-9]{5,}/?";  // 普通用户 URL 规则
+            var base_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[sixw].com/.+";  // 子域名可个性化设置或者不存在
+            var user_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou[sixw].com/i[a-zA-Z0-9]{5,}/?";  // 普通用户 URL 规则
             if (!Regex.IsMatch(share_url, base_pat))
                 return false;
             if (Regex.IsMatch(share_url, user_pat))
