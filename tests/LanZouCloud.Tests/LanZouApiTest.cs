@@ -19,15 +19,16 @@ namespace Test
             return cloud;
         }
 
-        private async Task<long> GetTestFolder(LanZouCloud cloud)
+        private async Task<long> GetTestFolder(LanZouCloud cloud, string name = null, long parent_id = -1)
         {
+            name = name ?? TestFolder;
             long folderId = 0;
-            var fileList = await cloud.GetFolderList();
+            var fileList = await cloud.GetFolderList(parent_id);
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
-            var folder = fileList.folders.Find(a => a.name == TestFolder);
+            var folder = fileList.folders.Find(a => a.name == name);
             if (folder == null)
             {
-                var create = await cloud.CreateFolder(TestFolder);
+                var create = await cloud.CreateFolder(name, parent_id);
                 Assert.IsTrue(create.code == LanZouCode.SUCCESS);
                 folderId = create.id;
             }
@@ -44,7 +45,7 @@ namespace Test
             long fileId = 0;
             var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
-            var file = fileList.files.Find(a => a.name == TestFolder);
+            var file = fileList.files.Find(a => a.name == TestFile);
             if (file == null)
             {
                 var create = await cloud.UploadFile(TestFile);
@@ -138,7 +139,9 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.DownloadFile(fileList.files[0].id, "download", true,
+            var fileId = await GetTestFile(cloud);
+
+            var info = await cloud.DownloadFile(fileId, "./", true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
@@ -173,7 +176,7 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
             var url = "https://wwa.lanzoui.com//i934vvi";
-            var info = await cloud.DownloadFileByUrl(url, "download", "", true,
+            var info = await cloud.DownloadFileByUrl(url, "./", "", true,
                 new Progress<ProgressInfo>(_progress =>
                 {
                     if (_progress.state == ProgressState.Start)
@@ -207,7 +210,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.UploadFile(@"download/气功.docx", -1, true,
+            var info = await cloud.UploadFile(TestFile, -1, true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
@@ -252,15 +255,44 @@ namespace Test
         {
             var cloud = await EnsureLoginCloud();
 
-            var folderId = await GetTestFile(cloud);
+            var fileId = await GetTestFile(cloud);
 
-            var info = await cloud.RenameFile(folderId, TestFolder + "_Rename");
+            var info = await cloud.RenameFile(fileId, TestFolder + "_Rename");
+
+            if (info.code == LanZouCode.FAILED && info.message == "此功能仅会员使用，请先开通会员")
+            {
+                return;
+            }
+
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
 
             // revert
-            info = await cloud.RenameFolder(folderId, TestFolder);
+            info = await cloud.RenameFolder(fileId, TestFolder);
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
         }
+
+
+        [TestMethod]
+        public async Task MoveFolder()
+        {
+            var cloud = await EnsureLoginCloud();
+
+            var folderId = await GetTestFolder(cloud);
+            var subF = await GetTestFolder(cloud, "SUBBBBBBBBBBBBBBB", folderId);
+
+            // upload
+            var create = await cloud.UploadFile(TestFile, subF);
+            Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+
+            // move
+            var info = await cloud.MoveFolder(subF, -1);
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+
+            // delete
+            var del = await cloud.DeleteFolder(info.id);
+            Assert.IsTrue(del.code == LanZouCode.SUCCESS);
+        }
+
 
         // TODO: more unit tests
     }
