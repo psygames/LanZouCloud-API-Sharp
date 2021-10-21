@@ -946,7 +946,6 @@ namespace LanZouCloudAPI
                                 {
                                     resp.EnsureSuccessStatusCode();
                                     text = await resp.Content.ReadAsStringAsync();
-                                    Print(JsonMapper.ToObject(text).ToJson(), LogLevel.Info);
                                 }
                             }
                         }
