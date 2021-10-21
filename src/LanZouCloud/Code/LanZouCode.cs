@@ -1,4 +1,4 @@
-﻿namespace LanZouCloudAPI
+namespace LanZouCloudAPI
 {
     public enum LanZouCode
     {
