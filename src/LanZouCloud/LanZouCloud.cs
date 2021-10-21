@@ -1197,15 +1197,13 @@ namespace LanZouCloudAPI
             {
                 if (overwrite && File.Exists(file_path))
                 {
-                    Log($"Move tmp file to real path(overwrite): {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
-                }
-                else
-                {
-                    Log($"Move tmp file to real path: {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
+                    File.Delete(file_path);
+                    Log($"Overwrire delete file path: {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
                 }
 
+                Log($"Move tmp file to real path: {file_path}", LogLevel.Info, nameof(DownloadFileByUrl));
                 // 下载完成，改回正常文件名
-                File.Move(tmp_file_path, file_path, overwrite);
+                File.Move(tmp_file_path, file_path);
 
                 var p_finish = new ProgressInfo(ProgressState.Finish, filename, now_size, content_length);
                 progress?.Report(p_finish);
