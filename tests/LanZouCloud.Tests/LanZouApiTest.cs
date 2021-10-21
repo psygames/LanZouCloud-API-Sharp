@@ -9,11 +9,53 @@ namespace Test
     [TestClass]
     public class LanZouApiTest
     {
+        const string TestFolder = "LanZouApiTestFolder";
+        const string TestFile = "LanZouApiTestFile.txt";
+
         private LanZouCloud Cloud()
         {
             var cloud = new LanZouCloud();
             cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
             return cloud;
+        }
+
+        private async Task<long> GetTestFolder(LanZouCloud cloud)
+        {
+            long folderId = 0;
+            var fileList = await cloud.GetFolderList();
+            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            var folder = fileList.folders.Find(a => a.name == TestFolder);
+            if (folder == null)
+            {
+                var create = await cloud.CreateFolder(TestFolder);
+                Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+                folderId = create.id;
+            }
+            else
+            {
+                folderId = folder.id;
+            }
+            return folderId;
+        }
+
+
+        private async Task<long> GetTestFile(LanZouCloud cloud)
+        {
+            long fileId = 0;
+            var fileList = await cloud.GetFileList();
+            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            var file = fileList.files.Find(a => a.name == TestFolder);
+            if (file == null)
+            {
+                var create = await cloud.UploadFile(TestFile);
+                Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+                fileId = create.id;
+            }
+            else
+            {
+                fileId = file.id;
+            }
+            return fileId;
         }
 
         private async Task<LanZouCloud> EnsureLoginCloud()
@@ -187,6 +229,37 @@ namespace Test
             Assert.IsTrue(isReadyOK);
             Assert.IsTrue(isUploadingOK);
             Assert.IsTrue(isFinishOK);
+        }
+
+        [TestMethod]
+        public async Task RenameFolder()
+        {
+            var cloud = await EnsureLoginCloud();
+
+            var folderId = await GetTestFolder(cloud);
+
+            var info = await cloud.RenameFolder(folderId, TestFolder + "_Rename");
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+
+            // revert
+            info = await cloud.RenameFolder(folderId, TestFolder);
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+        }
+
+
+        [TestMethod]
+        public async Task RenameFile()
+        {
+            var cloud = await EnsureLoginCloud();
+
+            var folderId = await GetTestFile(cloud);
+
+            var info = await cloud.RenameFile(folderId, TestFolder + "_Rename");
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+
+            // revert
+            info = await cloud.RenameFolder(folderId, TestFolder);
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
         }
 
         // TODO: more unit tests
