@@ -225,16 +225,16 @@ namespace LanZouCloudAPI
         /// <para>官方默认每页 18 条数据</para>
         /// </summary>
         /// <param name="folder_id">文件夹ID，默认值 -1 表示根路径</param>
-        /// <param name="page_begin">开始页，1为起始页</param>
-        /// <param name="page_count">页数量</param>
+        /// <param name="page_begin">开始页，1 为起始页</param>
+        /// <param name="page_count">获取页数，默认 -1 表示所有</param>
         /// <returns></returns>
-        public async Task<CloudFileList> GetFileList(long folder_id = -1, int page_begin = 1, int page_count = int.MaxValue)
+        public async Task<CloudFileList> GetFileList(long folder_id = -1, int page_begin = 1, int page_count = -1)
         {
             LogInfo($"Get file list of folder id: {folder_id}, begin page: {page_begin}, count: {page_count}", nameof(GetFileList));
 
             CloudFileList result;
-            var page = page_begin;
-            var page_end = (long)page_begin + page_count;
+            long page = page_begin;
+            long page_end = page_count < 0 ? long.MaxValue : ((long)page_begin + page_count);
             var file_list = new List<CloudFile>();
             while (page < page_end)
             {
@@ -1453,10 +1453,10 @@ namespace LanZouCloudAPI
         /// </summary>
         /// <param name="share_url">分享链接</param>
         /// <param name="pwd">提取码</param>
-        /// <param name="page_begin">开始页数，1为起始页</param>
-        /// <param name="page_count">页数量</param>
+        /// <param name="page_begin">开始页数，1 为起始页</param>
+        /// <param name="page_count">获取页数，默认 -1 表示所有</param>
         /// <returns></returns>
-        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int page_begin = 1, int page_count = int.MaxValue)
+        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int page_begin = 1, int page_count = -1)
         {
             LogInfo($"Get folder info of url: {share_url}, begin page : {page_begin}, count: {page_count}", nameof(GetFolderInfoByUrl));
 
@@ -1586,8 +1586,8 @@ namespace LanZouCloudAPI
             Log($"Get folder info, sub folders: {sub_folders.Count}", LogLevel.Info, nameof(GetFolderInfoByUrl));
 
             // 提取文件夹下全部文件
-            var page = page_begin;
-            var page_end = (long)page_begin + page_count;
+            long page = page_begin;
+            long page_end = page_count < 0 ? long.MaxValue : ((long)page_begin + page_count);
             var sub_files = new List<SubFile>();
             while (page < page_end)
             {
