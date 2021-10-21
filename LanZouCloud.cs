@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 
 namespace LanZouCloudAPI
 {
-    // test
     public partial class LanZouCloud
     {
         private int _chunk_size = 4096;             // 上传或下载是的块大小
