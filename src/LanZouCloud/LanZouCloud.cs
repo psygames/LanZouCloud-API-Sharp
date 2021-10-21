@@ -224,17 +224,17 @@ namespace LanZouCloudAPI
         /// 获取文件列表
         /// </summary>
         /// <param name="folder_id">文件夹ID，默认值 -1 表示根路径</param>
-        /// <param name="start_page">起始页</param>
-        /// <param name="end_page">最大结束页</param>
+        /// <param name="page_begin">开始页数，1为起始页</param>
+        /// <param name="page_end">结束页数（包含）</param>
         /// <returns></returns>
-        public async Task<CloudFileList> GetFileList(long folder_id = -1, int start_page = 1, int end_page = 9999)
+        public async Task<CloudFileList> GetFileList(long folder_id = -1, int page_begin = 1, int page_end = 99)
         {
-            LogInfo($"Get file list of folder id: {folder_id}, max pages count: {end_page}", nameof(GetFileList));
+            LogInfo($"Get file list of folder id: {folder_id}, begin page: {page_begin}, end page: {page_end}", nameof(GetFileList));
 
             CloudFileList result;
-            var page = start_page;
+            var page = page_begin;
             var file_list = new List<CloudFile>();
-            while (page <= end_page)
+            while (page <= page_end)
             {
                 var post_data = _post_data("task", $"{5}", "folder_id", $"{folder_id}", "pg", $"{page}");
                 var text = await _post_text(_doupload_url, post_data);
@@ -346,11 +346,12 @@ namespace LanZouCloudAPI
         /// 通过文件夹ID，获取文件夹及其子文件信息
         /// </summary>
         /// <param name="folder_id">文件夹ID</param>
-        /// <param name="max_page_count">官方现在最多只能读取99页</param>
+        /// <param name="page_begin">开始页数，1为起始页</param>
+        /// <param name="page_end">结束页数（包含）</param>
         /// <returns></returns>
-        public async Task<CloudFolderInfo> GetFolderInfo(long folder_id, int max_page_count = 99)
+        public async Task<CloudFolderInfo> GetFolderInfo(long folder_id, int page_begin = 1, int page_end = 99)
         {
-            LogInfo($"Get folder info of folder id: {folder_id}, max page count: {max_page_count}", nameof(GetFolderInfo));
+            LogInfo($"Get folder info of folder id: {folder_id}, page begin: {page_begin}, page end: {page_end}", nameof(GetFolderInfo));
 
             CloudFolderInfo result;
 
@@ -361,7 +362,7 @@ namespace LanZouCloudAPI
             }
             else
             {
-                result = await GetFolderInfoByUrl(_share.url, _share.password, max_page_count);
+                result = await GetFolderInfoByUrl(_share.url, _share.password, page_begin, page_end);
             }
 
             LogResult(result, nameof(GetFolderInfo));
@@ -1444,11 +1445,12 @@ namespace LanZouCloudAPI
         /// </summary>
         /// <param name="share_url">分享链接</param>
         /// <param name="pwd">提取码</param>
-        /// <param name="max_page_count">最大拉取页数</param>
+        /// <param name="page_begin">开始页数，1为起始页</param>
+        /// <param name="page_end">结束页数（包含）</param>
         /// <returns></returns>
-        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int max_page_count = 99)
+        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int page_begin = 1, int page_end = 99)
         {
-            LogInfo($"Get folder info of url: {share_url}, max page count: {max_page_count}", nameof(GetFolderInfoByUrl));
+            LogInfo($"Get folder info of url: {share_url}, begin page : {page_begin}, end page: {page_end}", nameof(GetFolderInfoByUrl));
 
             CloudFolderInfo result = null;
 
@@ -1576,12 +1578,12 @@ namespace LanZouCloudAPI
             Log($"Get folder info, sub folders: {sub_folders.Count}", LogLevel.Info, nameof(GetFolderInfoByUrl));
 
             // 提取文件夹下全部文件
-            var page = 1;
+            var page = page_begin;
             var sub_files = new List<SubFile>();
-            while (page <= max_page_count)
+            while (page <= page_end)
             {
-                if (page >= 2)  // 连续的请求需要稍等一下
-                    await Task.Delay(600);
+                if (page > page_begin)  // 连续的请求需要稍等一下
+                    await Task.Delay(800);
 
                 Log($"Get folder info page {page}...", LogLevel.Info, nameof(GetFolderInfoByUrl));
 

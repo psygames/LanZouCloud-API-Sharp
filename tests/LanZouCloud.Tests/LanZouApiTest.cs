@@ -79,7 +79,7 @@ namespace Test
             Assert.IsTrue(folderList.code == LanZouCode.SUCCESS);
 
             Assert.IsTrue(folderList.folders.Count > 0);
-            var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 2);
+            var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 1, 2);
             Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
         }
