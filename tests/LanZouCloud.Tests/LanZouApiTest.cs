@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using LanZouCloudAPI;
 using System;
+using System.Threading;
 
 namespace Test
 {
@@ -10,7 +11,11 @@ namespace Test
     public class LanZouApiTest
     {
         const string TestFolder = "LanZouApiTestFolder";
-        const string TestFile = "LanZouApiTestFile.txt";
+
+        const string RootPath = "../../../../../../LanZouTest/";
+        const string TestFilePath = RootPath + "LanZouApiTestFile.txt";
+        const string TestFileBigPath = RootPath + "LanZouApiTestFileBig.w3x";
+        const string cookieFilePath = RootPath + "cookie.txt";
 
         private LanZouCloud Cloud()
         {
@@ -40,15 +45,15 @@ namespace Test
         }
 
 
-        private async Task<long> GetTestFile(LanZouCloud cloud)
+        private async Task<long> GetTestFile(LanZouCloud cloud, string filepath = TestFilePath)
         {
             long fileId = 0;
             var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
-            var file = fileList.files.Find(a => a.name == TestFile);
+            var file = fileList.files.Find(a => a.name == Path.GetFileName(filepath));
             if (file == null)
             {
-                var create = await cloud.UploadFile(TestFile);
+                var create = await cloud.UploadFile(filepath);
                 Assert.IsTrue(create.code == LanZouCode.SUCCESS);
                 fileId = create.id;
             }
@@ -63,7 +68,7 @@ namespace Test
         {
             var cloud = new LanZouCloud();
             cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
-            string[] cookies = File.ReadAllText("cookie.txt").Split(',');
+            string[] cookies = File.ReadAllText(cookieFilePath).Split(',');
             var login = await cloud.Login(cookies[0], cookies[1]);
             Assert.IsTrue(login.code == LanZouCode.SUCCESS);
             return cloud;
@@ -167,6 +172,52 @@ namespace Test
 
 
         [TestMethod]
+        public async Task DownloadFileBigAndCancelById()
+        {
+            var cloud = await EnsureLoginCloud();
+            var fileList = await cloud.GetFileList();
+            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+
+            bool isStartOK = false;
+            bool isReadyOK = false;
+            bool isDownloadingOK = false;
+            bool isFinishOK = false;
+
+            var fileId = await GetTestFile(cloud, TestFileBigPath);
+
+            var cts = new CancellationTokenSource();
+
+            new Task(async () =>
+            {
+                await Task.Delay(6000);
+                cts.Cancel();
+            }).Start();
+
+            var info = await cloud.DownloadFile(fileId, "./", true,
+                new Progress<ProgressInfo>(_progress =>
+                {
+                    if (_progress.state == ProgressState.Start)
+                        isStartOK = true;
+                    if (_progress.state == ProgressState.Ready)
+                        isReadyOK = true;
+                    if (_progress.state == ProgressState.Progressing)
+                        isDownloadingOK = true;
+                    if (_progress.state == ProgressState.Finish)
+                        isFinishOK = true;
+                }), cts.Token);
+
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
+            Assert.IsTrue(File.Exists(info.filePath));
+
+            Assert.IsTrue(isStartOK);
+            Assert.IsTrue(isReadyOK);
+            Assert.IsTrue(isDownloadingOK);
+            Assert.IsTrue(isFinishOK);
+        }
+
+        [TestMethod]
         public async Task DownloadFileByUrl()
         {
             var cloud = Cloud();
@@ -210,7 +261,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.UploadFile(TestFile, -1, true,
+            var info = await cloud.UploadFile(TestFilePath, -1, true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
@@ -222,6 +273,49 @@ namespace Test
                 if (_progress.state == ProgressState.Finish)
                     isFinishOK = true;
             }));
+
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
+            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
+            Assert.IsTrue(info.id != 0);
+
+            Assert.IsTrue(isStartOK);
+            Assert.IsTrue(isReadyOK);
+            Assert.IsTrue(isUploadingOK);
+            Assert.IsTrue(isFinishOK);
+        }
+
+
+        [TestMethod]
+        public async Task UploadFileBigAndCancel()
+        {
+            var cloud = await EnsureLoginCloud();
+
+            bool isStartOK = false;
+            bool isReadyOK = false;
+            bool isUploadingOK = false;
+            bool isFinishOK = false;
+
+            var cts = new CancellationTokenSource();
+
+            new Task(async () =>
+            {
+                await Task.Delay(6000);
+                cts.Cancel();
+            }).Start();
+
+            var info = await cloud.UploadFile(TestFileBigPath, -1, true,
+                new Progress<ProgressInfo>(_progress =>
+                {
+                    if (_progress.state == ProgressState.Start)
+                        isStartOK = true;
+                    if (_progress.state == ProgressState.Ready)
+                        isReadyOK = true;
+                    if (_progress.state == ProgressState.Progressing)
+                        isUploadingOK = true;
+                    if (_progress.state == ProgressState.Finish)
+                        isFinishOK = true;
+                }), cts.Token);
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));
@@ -281,7 +375,7 @@ namespace Test
             var subF = await GetTestFolder(cloud, "SUBBBBBBBBBBBBBBB", folderId);
 
             // upload
-            var create = await cloud.UploadFile(TestFile, subF);
+            var create = await cloud.UploadFile(TestFilePath, subF);
             Assert.IsTrue(create.code == LanZouCode.SUCCESS);
 
             // move

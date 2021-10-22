@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LanZouCloudAPI
@@ -812,7 +813,8 @@ namespace LanZouCloudAPI
         /// <param name="progress"></param>
         /// <returns></returns>
         public async Task<DownloadInfo> DownloadFile(long file_id, string save_dir,
-            bool overwrite = false, IProgress<ProgressInfo> progress = null)
+            bool overwrite = false, IProgress<ProgressInfo> progress = null,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             save_dir = Path.GetFullPath(save_dir);
             save_dir = save_dir.Replace("\\", "/");
@@ -827,7 +829,7 @@ namespace LanZouCloudAPI
             }
             else
             {
-                result = await DownloadFileByUrl(share.url, save_dir, share.password, overwrite, progress);
+                result = await DownloadFileByUrl(share.url, save_dir, share.password, overwrite, progress, cancellationToken);
             }
 
             LogResult(result, nameof(DownloadFile));
@@ -842,7 +844,7 @@ namespace LanZouCloudAPI
         /// <param name="overwrite"></param>
         /// <param name="progress"></param>
         public async Task<UploadInfo> UploadFile(string file_path, long folder_id = -1, bool overwrite = false,
-            IProgress<ProgressInfo> progress = null)
+            IProgress<ProgressInfo> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             file_path = Path.GetFullPath(file_path);
             file_path = file_path.Replace("\\", "/");
@@ -937,7 +939,7 @@ namespace LanZouCloudAPI
                                 p_uploading.current = _current;
                                 p_uploading.total = _total;
                                 progress?.Report(p_uploading);
-                            });
+                            }, cancellationToken);
                         }
                         else
                         {
@@ -947,7 +949,7 @@ namespace LanZouCloudAPI
                         {
                             using (var client = _get_client(null, 3600))
                             {
-                                using (var resp = await client.PostAsync(upload_url, content))
+                                using (var resp = await client.PostAsync(upload_url, content, cancellationToken))
                                 {
                                     resp.EnsureSuccessStatusCode();
                                     text = await resp.Content.ReadAsStringAsync();
@@ -955,6 +957,12 @@ namespace LanZouCloudAPI
                             }
                         }
                     }
+                    break;
+                }
+                catch (TaskCanceledException cancelEx)
+                {
+                    //TODO: Canceled
+                    Log($"Http Error: {cancelEx.Message}", LogLevel.Error, nameof(UploadFile));
                     break;
                 }
                 catch (Exception ex)
@@ -1006,7 +1014,8 @@ namespace LanZouCloudAPI
         /// <param name="progress">用于显示下载进度</param>
         /// <returns></returns>
         public async Task<DownloadInfo> DownloadFileByUrl(string share_url, string save_dir,
-            string pwd = "", bool overwrite = false, IProgress<ProgressInfo> progress = null)
+            string pwd = "", bool overwrite = false, IProgress<ProgressInfo> progress = null,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             save_dir = Path.GetFullPath(save_dir);
             save_dir = save_dir.Replace("\\", "/");
@@ -1161,9 +1170,9 @@ namespace LanZouCloudAPI
                                     using (var fileStream = new FileStream(tmp_file_path, FileMode.Append,
                                          FileAccess.Write, FileShare.Read, chunk_size))
                                     {
-                                        while (true)
+                                        while (!cancellationToken.IsCancellationRequested)
                                         {
-                                            var readLength = await netStream.ReadAsync(chunk, 0, chunk_size);
+                                            var readLength = await netStream.ReadAsync(chunk, 0, chunk_size, cancellationToken);
                                             if (readLength == 0)
                                                 break;
 
@@ -1180,6 +1189,12 @@ namespace LanZouCloudAPI
                             isDownloadSuccess = true;
                             break;
                         }
+                        catch (TaskCanceledException cancelEx)
+                        {
+                            //TODO: Canceled
+                            Log($"Http Error: {cancelEx.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                            break;
+                        }
                         catch (Exception ex)
                         {
                             Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
@@ -1192,7 +1207,7 @@ namespace LanZouCloudAPI
 
             if (!isDownloadSuccess)
             {
-                result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, retry over.");
+                result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, canceled or retry over.");
             }
             else
             {

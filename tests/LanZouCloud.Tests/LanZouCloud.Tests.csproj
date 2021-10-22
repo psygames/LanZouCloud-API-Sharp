@@ -17,13 +17,4 @@
     <ProjectReference Include="..\..\src\LanZouCloud\LanZouCloud.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="LanZouApiTestFile.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="cookie.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
