@@ -996,7 +996,8 @@ namespace LanZouCloudAPI
         #region Public APIs （无需登录）
 
         /// <summary>
-        /// 通过分享链接，下载文件(需提取码)
+        /// <para>通过分享链接，下载文件(需提取码)</para>
+        /// <para>此接口无需登录</para>
         /// </summary>
         /// <param name="share_url"></param>
         /// <param name="save_dir"></param>
@@ -1219,7 +1220,8 @@ namespace LanZouCloudAPI
         }
 
         /// <summary>
-        /// 通过文件分享链接，获取文件各种信息(包括下载直链，需提取码)
+        /// <para>通过文件分享链接，获取文件各种信息(包括下载直链，需提取码)</para>
+        /// <para>此接口无需登录</para>
         /// </summary>
         /// <param name="share_url">文件分享链接</param>
         /// <param name="pwd">文件提取码(如果有的话)</param>
@@ -1448,6 +1450,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// <para>通过分享链接，获取文件夹及其子文件信息（需提取码）</para>
         /// <para>官方默认每页 50 条数据</para>
+        /// <para>此接口无需登录</para>
         /// </summary>
         /// <param name="share_url">分享链接</param>
         /// <param name="pwd">提取码</param>
