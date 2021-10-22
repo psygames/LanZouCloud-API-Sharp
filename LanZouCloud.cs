@@ -53,7 +53,7 @@ namespace LanZouCloudAPI
             else
             {
                 var json = JsonMapper.ToObject(text);
-                if (!json.ContainsKey("info"))  // 新注册用户无数据, info=None
+                if (!json.ContainsKey("info") || json["info"] == null)  // 新注册用户无数据, info=null
                 {
                     Log("New user has no move folders", LogLevel.Warning, nameof(GetMoveFolders));
                     result = new MoveFolderList(LanZouCode.SUCCESS, _success_msg, folders);
