@@ -399,7 +399,7 @@ namespace LanZouCloudAPI
                 // 有效性校验
                 if (f_info.ContainsKey("f_id") && f_info["f_id"].ToString() == "i")
                 {
-                    result = new ShareInfo(LanZouCode.ID_ERROR, "ID校验失败");
+                    result = new ShareInfo(LanZouCode.FAILED, "ID校验失败");
                 }
                 else
                 {
@@ -456,7 +456,7 @@ namespace LanZouCloudAPI
                 // 有效性校验
                 if (f_info.ContainsKey("name") && string.IsNullOrEmpty(f_info["name"].ToString()))
                 {
-                    result = new ShareInfo(LanZouCode.ID_ERROR, "Name校验失败");
+                    result = new ShareInfo(LanZouCode.FAILED, "Name校验失败");
                 }
                 else
                 {
@@ -1065,10 +1065,11 @@ namespace LanZouCloudAPI
                                 var _buffer = new byte[1];
                                 var max_retries = 5;  // 5 次拿不到就算了
 
-                                while (_con_len == null && max_retries > 0)
+                                while (_con_len == null && max_retries > 0
+                                    && !cancellationToken.IsCancellationRequested)
                                 {
                                     max_retries -= 1;
-                                    await _stream.ReadAsync(_buffer, 0, 1);
+                                    await _stream.ReadAsync(_buffer, 0, 1, cancellationToken);
 
                                     // 再请求一次试试，只请求头
                                     _con_len = (await _get_headers(file_info.durl))?.ContentLength;
@@ -1078,12 +1079,24 @@ namespace LanZouCloudAPI
                         }
                         break;
                     }
+                    catch (TaskCanceledException cancelEx)
+                    {
+                        Log($"Http Error: {cancelEx.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
+                        break;
+                    }
                     catch (Exception ex)
                     {
-                        Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                        Log($"Http Error: {ex.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
                         if (i < http_retries) Log($"Retry({i + 1}): {file_info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                     }
                 }
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                result = new DownloadInfo(LanZouCode.TASK_CANCELED, _task_canceled_msg);
+                LogResult(result, nameof(DownloadFileByUrl));
+                return result;
             }
 
             // 应该不会出现这种情况
@@ -1191,13 +1204,12 @@ namespace LanZouCloudAPI
                         }
                         catch (TaskCanceledException cancelEx)
                         {
-                            //TODO: Canceled
-                            Log($"Http Error: {cancelEx.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                            Log($"Http Error: {cancelEx.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
                             break;
                         }
                         catch (Exception ex)
                         {
-                            Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
+                            Log($"Http Error: {ex.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
                             if (i < http_retries) Log($"Retry({i + 1}): {file_info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                         }
                     }
@@ -1207,7 +1219,14 @@ namespace LanZouCloudAPI
 
             if (!isDownloadSuccess)
             {
-                result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, canceled or retry over.");
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    result = new DownloadInfo(LanZouCode.TASK_CANCELED, _task_canceled_msg);
+                }
+                else
+                {
+                    result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, retry failed.");
+                }
             }
             else
             {
@@ -1292,11 +1311,13 @@ namespace LanZouCloudAPI
             string f_type;
 
             // 这里获取下载直链 304 重定向前的链接
-            if (first_page.Contains("id=\"pwdload\"") || first_page.Contains("id=\"passwddiv\""))   // 文件设置了提取码时
+            // 文件设置了提取码时
+            if (first_page.Contains("id=\"pwdload\"") || first_page.Contains("id=\"passwddiv\""))
             {
                 if (string.IsNullOrEmpty(pwd))
                 {
-                    result = new CloudFileInfo(LanZouCode.LACK_PASSWORD, $"分享链接需要提取码: {share_url}", pwd, share_url);  // 没给提取码直接退出
+                    // 没给提取码直接退出
+                    result = new CloudFileInfo(LanZouCode.LACK_PASSWORD, $"分享链接需要提取码: {share_url}", pwd, share_url);
                     LogResult(result, nameof(GetFileInfoByUrl));
                     return result;
                 }
