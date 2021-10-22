@@ -178,43 +178,19 @@ namespace Test
             var fileList = await cloud.GetFileList();
             Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
 
-            bool isStartOK = false;
-            bool isReadyOK = false;
-            bool isDownloadingOK = false;
-            bool isFinishOK = false;
-
             var fileId = await GetTestFile(cloud, TestFileBigPath);
 
             var cts = new CancellationTokenSource();
 
             new Task(async () =>
             {
-                await Task.Delay(6000);
+                await Task.Delay(4000);
                 cts.Cancel();
             }).Start();
 
-            var info = await cloud.DownloadFile(fileId, "./", true,
-                new Progress<ProgressInfo>(_progress =>
-                {
-                    if (_progress.state == ProgressState.Start)
-                        isStartOK = true;
-                    if (_progress.state == ProgressState.Ready)
-                        isReadyOK = true;
-                    if (_progress.state == ProgressState.Progressing)
-                        isDownloadingOK = true;
-                    if (_progress.state == ProgressState.Finish)
-                        isFinishOK = true;
-                }), cts.Token);
+            var info = await cloud.DownloadFile(fileId, "./", true, null, cts.Token);
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
-            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
-            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
-            Assert.IsTrue(File.Exists(info.filePath));
-
-            Assert.IsTrue(isStartOK);
-            Assert.IsTrue(isReadyOK);
-            Assert.IsTrue(isDownloadingOK);
-            Assert.IsTrue(isFinishOK);
+            Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
         }
 
         [TestMethod]
@@ -291,41 +267,17 @@ namespace Test
         {
             var cloud = await EnsureLoginCloud();
 
-            bool isStartOK = false;
-            bool isReadyOK = false;
-            bool isUploadingOK = false;
-            bool isFinishOK = false;
-
             var cts = new CancellationTokenSource();
 
             new Task(async () =>
             {
-                await Task.Delay(6000);
+                await Task.Delay(4000);
                 cts.Cancel();
             }).Start();
 
-            var info = await cloud.UploadFile(TestFileBigPath, -1, true,
-                new Progress<ProgressInfo>(_progress =>
-                {
-                    if (_progress.state == ProgressState.Start)
-                        isStartOK = true;
-                    if (_progress.state == ProgressState.Ready)
-                        isReadyOK = true;
-                    if (_progress.state == ProgressState.Progressing)
-                        isUploadingOK = true;
-                    if (_progress.state == ProgressState.Finish)
-                        isFinishOK = true;
-                }), cts.Token);
+            var info = await cloud.UploadFile(TestFileBigPath, -1, false, null, cts.Token);
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
-            Assert.IsTrue(!string.IsNullOrEmpty(info.url));
-            Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
-            Assert.IsTrue(info.id != 0);
-
-            Assert.IsTrue(isStartOK);
-            Assert.IsTrue(isReadyOK);
-            Assert.IsTrue(isUploadingOK);
-            Assert.IsTrue(isFinishOK);
+            Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
         }
 
         [TestMethod]

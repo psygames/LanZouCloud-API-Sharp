@@ -916,6 +916,9 @@ namespace LanZouCloudAPI
 
             var upload_url = "https://pc.woozooo.com/fileup.php";
 
+            bool isCanceled = false;
+            bool isUploadSuccess = false;
+
             for (int i = 0; i < http_retries; i++)
             {
                 try
@@ -957,11 +960,12 @@ namespace LanZouCloudAPI
                             }
                         }
                     }
+                    isUploadSuccess = true;
                     break;
                 }
                 catch (TaskCanceledException cancelEx)
                 {
-                    //TODO: Canceled
+                    isCanceled = true;
                     Log($"Http Error: {cancelEx.Message}", LogLevel.Error, nameof(UploadFile));
                     break;
                 }
@@ -972,8 +976,12 @@ namespace LanZouCloudAPI
                 }
             }
 
-            var _res = _get_result(text);
-            if (_res.code != LanZouCode.SUCCESS)
+            Result _res = null;
+            if (!isUploadSuccess && isCanceled)
+            {
+                result = new UploadInfo(LanZouCode.TASK_CANCELED, _task_canceled_msg, filename, file_path);
+            }
+            else if ((_res = _get_result(text)).code != LanZouCode.SUCCESS)
             {
                 result = new UploadInfo(_res.code, _res.message, filename, file_path);
             }
@@ -1149,6 +1157,7 @@ namespace LanZouCloudAPI
             var p_ready = new ProgressInfo(ProgressState.Ready, filename, now_size, content_length);
             progress?.Report(p_ready);
             bool isDownloadSuccess = false;
+            bool isCanceled = false;
 
             if (is_downloaded)
             {
@@ -1204,6 +1213,7 @@ namespace LanZouCloudAPI
                         }
                         catch (TaskCanceledException cancelEx)
                         {
+                            isCanceled = true;
                             Log($"Http Error: {cancelEx.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
                             break;
                         }
@@ -1217,16 +1227,13 @@ namespace LanZouCloudAPI
                 });
             }
 
-            if (!isDownloadSuccess)
+            if (!isDownloadSuccess && isCanceled)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    result = new DownloadInfo(LanZouCode.TASK_CANCELED, _task_canceled_msg);
-                }
-                else
-                {
-                    result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, retry failed.");
-                }
+                result = new DownloadInfo(LanZouCode.TASK_CANCELED, _task_canceled_msg);
+            }
+            else if (!isDownloadSuccess && !isCanceled)
+            {
+                result = new DownloadInfo(LanZouCode.NETWORK_ERROR, "Download failed, retry failed.");
             }
             else
             {
