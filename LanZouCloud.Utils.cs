@@ -127,6 +127,7 @@ namespace LanZouCloudAPI
 
         private static readonly string _network_error_msg = "Network error, please retry later";
         private static readonly string _not_login_msg = "You are not login, please login and retry";
+        private static readonly string _task_canceled_msg = "Task was canceled";
         private static readonly string _success_msg = "Success";
 
         /// <summary>

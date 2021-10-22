@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LanZouCloudAPI
@@ -203,12 +204,15 @@ namespace LanZouCloudAPI
             private HttpContent content;
             private int bufferSize;
             private Action<long, long> progress;
+            private CancellationToken cancellationToken;
 
-            internal ProgressableStreamContent(HttpContent content, int bufferSize, Action<long, long> progress)
+            internal ProgressableStreamContent(HttpContent content, int bufferSize,
+                Action<long, long> progress, CancellationToken cancellationToken)
             {
                 this.content = content;
                 this.bufferSize = bufferSize;
                 this.progress = progress;
+                this.cancellationToken = cancellationToken;
 
                 foreach (var h in content.Headers)
                 {
@@ -225,9 +229,9 @@ namespace LanZouCloudAPI
                     var current = 0;
                     using (var fileStream = await content.ReadAsStreamAsync())
                     {
-                        while (true)
+                        while (!cancellationToken.IsCancellationRequested)
                         {
-                            var length = await fileStream.ReadAsync(buffer, 0, bufferSize);
+                            var length = await fileStream.ReadAsync(buffer, 0, bufferSize, cancellationToken);
                             if (length == 0)
                                 break;
 
