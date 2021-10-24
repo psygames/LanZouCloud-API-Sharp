@@ -5,6 +5,7 @@
 <h1 align="center">- 蓝奏云API -</h1>
 
 ### 好消息，好消息！！！ [code](https://github.com/psygames/LanZouCloud-API-Sharp/tree/code) 分支仅包含代码部分，可以作为子树合并到自己的项目中。
+### 技术交流QQ群 >>>[点击加入](https://jq.qq.com/?_wv=1027&k=i87alUFD)<<<
 
 # 简介
 
