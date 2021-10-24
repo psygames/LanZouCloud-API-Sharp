@@ -202,7 +202,7 @@ namespace Test
             bool isReadyOK = false;
             bool isDownloadingOK = false;
             bool isFinishOK = false;
-            var url = "https://wwa.lanzoui.com//i934vvi";
+            var url = "https://psyduck.lanzoui.com/ibf1Xvlo4rc";
             var info = await cloud.DownloadFileByUrl(url, "./", "", true,
                 new Progress<ProgressInfo>(_progress =>
                 {

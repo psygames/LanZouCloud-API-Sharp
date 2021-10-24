@@ -405,7 +405,7 @@ namespace LanZouCloudAPI
                 {
                     // onof=1 时，存在有效的提取码; onof=0 时不存在提取码，但是 pwd 字段还是有一个无效的随机密码
                     var pwd = f_info["onof"].ToString() == "1" ? f_info["pwd"].ToString() : "";
-                    var url = f_info["is_newd"] + "//" + f_info["f_id"];        // 文件的分享链接需要拼凑
+                    var url = f_info["is_newd"] + "/" + f_info["f_id"];        // 文件的分享链接需要拼凑
                     var post_data_1 = _post_data("task", $"{12}", "file_id", $"{file_id}");
                     var _text = await _post_text(_doupload_url, post_data_1);   // 文件信息
                     var __res = _get_result(_text);
@@ -1036,11 +1036,7 @@ namespace LanZouCloudAPI
             var p_start = new ProgressInfo(ProgressState.Start);
             progress?.Report(p_start);
 
-            if (!await is_file_url(share_url))
-            {
-                result = new DownloadInfo(LanZouCode.URL_INVALID, $"Invalid url: {share_url}", share_url);
-            }
-            else if ((file_info = await GetFileInfoByUrl(share_url, pwd)).code != LanZouCode.SUCCESS)
+            if ((file_info = await GetFileInfoByUrl(share_url, pwd)).code != LanZouCode.SUCCESS)
             {
                 result = new DownloadInfo(file_info.code, file_info.message, share_url);
             }
@@ -1274,7 +1270,7 @@ namespace LanZouCloudAPI
             CloudFileInfo result = null;
             string first_page = null;
 
-            if (!await is_file_url(share_url))  // 非文件链接返回错误
+            if (!await is_share_url(share_url))
             {
                 result = new CloudFileInfo(LanZouCode.URL_INVALID, $"Invalid url: {share_url}", pwd, share_url);
             }
@@ -1305,7 +1301,7 @@ namespace LanZouCloudAPI
             first_page = remove_notes(first_page);  // 去除网页里的注释
             if (first_page.Contains("文件取消") || first_page.Contains("文件不存在"))
             {
-                result = new CloudFileInfo(LanZouCode.FILE_CANCELLED, $"文件取消或不存在: {share_url}", pwd, share_url);
+                result = new CloudFileInfo(LanZouCode.FILE_CANCELLED, $"文件取消分享或不存在: {share_url}", pwd, share_url);
                 LogResult(result, nameof(GetFileInfoByUrl));
                 return result;
             }
@@ -1506,7 +1502,7 @@ namespace LanZouCloudAPI
 
             CloudFolderInfo result = null;
 
-            if (await is_file_url(share_url))
+            if (await is_share_url(share_url))
             {
                 result = new CloudFolderInfo(LanZouCode.URL_INVALID, $"Invalid url: {share_url}");
                 LogResult(result, nameof(GetFolderInfoByUrl));
@@ -1520,7 +1516,7 @@ namespace LanZouCloudAPI
             }
             else if (html.Contains("文件不存在") || html.Contains("文件取消"))
             {
-                result = new CloudFolderInfo(LanZouCode.FILE_CANCELLED, "文件取消或不存在");
+                result = new CloudFolderInfo(LanZouCode.FILE_CANCELLED, "文件取消分享或不存在");
             }
             // 要求输入密码, 用户描述中可能带有"输入密码",所以不用这个字符串判断
             else if (string.IsNullOrEmpty(pwd) && (html.Contains("id=\"pwdload\"") || html.Contains("id=\"passwddiv\"")))
