@@ -32,6 +32,7 @@
   - [ ] 清理"幽灵"文件夹
 
 - 如果有任何问题或建议, 欢迎提 issue, 维护不易，求一个 star (\*/ω＼*)
+- python 版请关注：[https://github.com/zaxtyson/LanZouCloud-API](https://github.com/zaxtyson/LanZouCloud-API)
 
 # 免责声明
 
