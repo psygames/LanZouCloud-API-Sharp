@@ -168,14 +168,8 @@ namespace LanZouCloudAPI
                 {
                     fn.Append((char)b);
                 }
-#if UNITY_5_3_OR_NEWER
                 Headers.Add("Content-Type", "application/octet-stream");
                 Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"{fn}\"");
-#else
-
-                Headers.Add("Content-Type", "application/octet-stream");
-                Headers.Add("Content-Disposition", $"form-data; name=\"{name}\"; filename=\"{fn}\"");
-#endif
             }
 
             protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)

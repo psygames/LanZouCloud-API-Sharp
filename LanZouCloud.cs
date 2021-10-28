@@ -843,7 +843,7 @@ namespace LanZouCloudAPI
         /// <param name="folder_id"></param>
         /// <param name="overwrite"></param>
         /// <param name="progress"></param>
-        public async Task<UploadInfo> UploadFile(string file_path, long folder_id = -1, bool overwrite = false,
+        public async Task<UploadInfo> UploadFile(string file_path, string custom_filename = null, long folder_id = -1, bool overwrite = false,
             IProgress<ProgressInfo> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             file_path = Path.GetFullPath(file_path);
@@ -853,14 +853,15 @@ namespace LanZouCloudAPI
 
             UploadInfo result = null;
 
+            var filename = name_format(custom_filename ?? Path.GetFileName(file_path));
+
             if (!File.Exists(file_path))
             {
-                result = new UploadInfo(LanZouCode.PATH_ERROR, $"File not found: {file_path}", Path.GetFileName(file_path), file_path);
+                result = new UploadInfo(LanZouCode.PATH_ERROR, $"File not found: {file_path}", filename, file_path);
                 LogResult(result, nameof(UploadFile));
                 return result;
             }
 
-            var filename = name_format(Path.GetFileName(file_path));
             var file_size = new FileInfo(file_path).Length;
 
             var p_start = new ProgressInfo(ProgressState.Start, filename, 0, file_size);
@@ -870,7 +871,7 @@ namespace LanZouCloudAPI
             {
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"上传超过最大文件大小({_max_size}MB): {file_path}", filename, file_path);
             }
-            else if (!is_name_valid(file_path))
+            else if (!is_name_valid(filename))
             {
                 // 不允许上传的格式
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"文件后缀名不符合官方限制: {file_path}", filename, file_path);
@@ -933,21 +934,14 @@ namespace LanZouCloudAPI
                         _content.Add(new StringContent(filename, Encoding.UTF8), "name");
                         _content.Add(new UTF8EncodingStreamContent(fileStream, "upload_file", filename));
 
-                        HttpContent content;
-                        if (progress != null)
+                        var p_uploading = new ProgressInfo(ProgressState.Progressing, filename, 0, file_size);
+                        var content = new ProgressableStreamContent(_content, _chunk_size, (_current, _total) =>
                         {
-                            var p_uploading = new ProgressInfo(ProgressState.Progressing, filename, 0, file_size);
-                            content = new ProgressableStreamContent(_content, _chunk_size, (_current, _total) =>
-                            {
-                                p_uploading.current = _current;
-                                p_uploading.total = _total;
-                                progress?.Report(p_uploading);
-                            }, cancellationToken);
-                        }
-                        else
-                        {
-                            content = _content;
-                        }
+                            p_uploading.current = _current;
+                            p_uploading.total = _total;
+                            progress?.Report(p_uploading);
+                        }, cancellationToken);
+
                         using (content)
                         {
                             using (var client = _get_client(null, 3600))
@@ -963,10 +957,10 @@ namespace LanZouCloudAPI
                     isUploadSuccess = true;
                     break;
                 }
-                catch (TaskCanceledException cancelEx)
+                catch (TaskCanceledException)
                 {
                     isCanceled = true;
-                    Log($"Http Error: {cancelEx.Message}", LogLevel.Error, nameof(UploadFile));
+                    Log($"Http Canceled", LogLevel.Info, nameof(UploadFile));
                     break;
                 }
                 catch (Exception ex)
@@ -1083,14 +1077,14 @@ namespace LanZouCloudAPI
                         }
                         break;
                     }
-                    catch (TaskCanceledException cancelEx)
+                    catch (TaskCanceledException)
                     {
-                        Log($"Http Error: {cancelEx.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
+                        Log($"Http Canceled", LogLevel.Info, nameof(DownloadFileByUrl));
                         break;
                     }
                     catch (Exception ex)
                     {
-                        Log($"Http Error: {ex.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
+                        Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
                         if (i < http_retries) Log($"Retry({i + 1}): {file_info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                     }
                 }
@@ -1207,15 +1201,15 @@ namespace LanZouCloudAPI
                             isDownloadSuccess = true;
                             break;
                         }
-                        catch (TaskCanceledException cancelEx)
+                        catch (TaskCanceledException)
                         {
                             isCanceled = true;
-                            Log($"Http Error: {cancelEx.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
+                            Log($"Http Canceled", LogLevel.Info, nameof(DownloadFileByUrl));
                             break;
                         }
                         catch (Exception ex)
                         {
-                            Log($"Http Error: {ex.Message}", LogLevel.Warning, nameof(DownloadFileByUrl));
+                            Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(DownloadFileByUrl));
                             if (i < http_retries) Log($"Retry({i + 1}): {file_info.durl}", LogLevel.Info, nameof(DownloadFileByUrl));
                         }
                     }
