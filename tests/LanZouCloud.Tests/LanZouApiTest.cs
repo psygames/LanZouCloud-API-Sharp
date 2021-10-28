@@ -237,7 +237,7 @@ namespace Test
             bool isUploadingOK = false;
             bool isFinishOK = false;
 
-            var info = await cloud.UploadFile(TestFilePath, -1, true,
+            var info = await cloud.UploadFile(TestFilePath, null, -1, true,
                 new Progress<ProgressInfo>(_progress =>
             {
                 if (_progress.state == ProgressState.Start)
@@ -275,7 +275,7 @@ namespace Test
                 cts.Cancel();
             }).Start();
 
-            var info = await cloud.UploadFile(TestFileBigPath, -1, false, null, cts.Token);
+            var info = await cloud.UploadFile(TestFileBigPath, null, -1, false, null, cts.Token);
 
             Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
         }
@@ -327,7 +327,7 @@ namespace Test
             var subF = await GetTestFolder(cloud, "SUBBBBBBBBBBBBBBB", folderId);
 
             // upload
-            var create = await cloud.UploadFile(TestFilePath, subF);
+            var create = await cloud.UploadFile(TestFilePath, null, subF);
             Assert.IsTrue(create.code == LanZouCode.SUCCESS);
 
             // move
