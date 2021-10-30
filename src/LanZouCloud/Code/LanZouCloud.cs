@@ -1,4 +1,4 @@
-using LitJson;
+﻿using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -226,8 +226,8 @@ namespace LanZouCloudAPI
         /// <para>官方默认每页 18 条数据</para>
         /// </summary>
         /// <param name="folder_id">文件夹ID，默认值 -1 表示根路径</param>
-        /// <param name="page_begin">开始页，1 为起始页</param>
-        /// <param name="page_count">获取页数，默认 -1 表示所有</param>
+        /// <param name="page_begin">开始页码，默认值 1 为起始页</param>
+        /// <param name="page_count">获取页数，默认值 -1 表示所有</param>
         /// <returns></returns>
         public async Task<CloudFileList> GetFileList(long folder_id = -1, int page_begin = 1, int page_count = -1)
         {
@@ -349,12 +349,12 @@ namespace LanZouCloudAPI
         /// 通过文件夹ID，获取文件夹及其子文件信息
         /// </summary>
         /// <param name="folder_id">文件夹ID</param>
-        /// <param name="page_begin">开始页数，1为起始页</param>
-        /// <param name="page_end">结束页数（包含）</param>
+        /// <param name="page_begin">开始页码，默认值 1 为起始页</param>
+        /// <param name="page_count">获取页数，默认值 -1 表示全部</param>
         /// <returns></returns>
-        public async Task<CloudFolderInfo> GetFolderInfo(long folder_id, int page_begin = 1, int page_end = 99)
+        public async Task<CloudFolderInfo> GetFolderInfo(long folder_id, int page_begin = 1, int page_count = -1)
         {
-            LogInfo($"Get folder info of folder id: {folder_id}, page begin: {page_begin}, page end: {page_end}", nameof(GetFolderInfo));
+            LogInfo($"Get folder info of folder id: {folder_id}, begin page : {page_begin}, count: {page_count}", nameof(GetFolderInfo));
 
             CloudFolderInfo result;
 
@@ -365,7 +365,7 @@ namespace LanZouCloudAPI
             }
             else
             {
-                result = await GetFolderInfoByUrl(_share.url, _share.password, page_begin, page_end);
+                result = await GetFolderInfoByUrl(_share.url, _share.password, page_begin, page_count);
             }
 
             LogResult(result, nameof(GetFolderInfo));
@@ -1487,8 +1487,8 @@ namespace LanZouCloudAPI
         /// </summary>
         /// <param name="share_url">分享链接</param>
         /// <param name="pwd">提取码</param>
-        /// <param name="page_begin">开始页数，1 为起始页</param>
-        /// <param name="page_count">获取页数，默认 -1 表示所有</param>
+        /// <param name="page_begin">开始页码，默认值 1 为起始页</param>
+        /// <param name="page_count">获取页数，默认值 -1 表示所有</param>
         /// <returns></returns>
         public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int page_begin = 1, int page_count = -1)
         {
