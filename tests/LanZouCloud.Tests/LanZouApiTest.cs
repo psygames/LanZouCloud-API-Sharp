@@ -170,6 +170,19 @@ namespace Test
             Assert.IsTrue(isFinishOK);
         }
 
+        [TestMethod]
+        public async Task DownloadFileBigById()
+        {
+            var cloud = await EnsureLoginCloud();
+            var fileList = await cloud.GetFileList();
+            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+
+            var fileId = await GetTestFile(cloud, TestFileBigPath);
+
+            var info = await cloud.DownloadFile(fileId, "./", true);
+
+            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+        }
 
         [TestMethod]
         public async Task DownloadFileBigAndCancelById()
