@@ -111,10 +111,10 @@ namespace LanZouCloudAPI
             return text;
         }
 
-        private async Task<HttpContentHeaders> _get_headers(string url)
+        private async Task<long?> _get_content_length(string url)
         {
             url = fix_url_domain(url);
-            HttpContentHeaders content_headers = null;
+            long? content_length = null;
             for (int i = 0; i < http_retries; i++)
             {
                 try
@@ -123,19 +123,20 @@ namespace LanZouCloudAPI
                     {
                         using (var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
                         {
+                            if (resp.StatusCode == HttpStatusCode.InternalServerError)
+                                break;
                             // dont ensure success code, casue code is 502 Bad Gateway
-                            content_headers = resp.Content.Headers;
+                            content_length = resp.Content.Headers.ContentLength;
                         }
                     }
-                    break;
                 }
                 catch (Exception ex)
                 {
-                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_headers));
-                    if (i < http_retries) Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_headers));
+                    Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_content_length));
+                    if (i < http_retries) Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_content_length));
                 }
             }
-            return content_headers;
+            return content_length;
         }
         #endregion
 

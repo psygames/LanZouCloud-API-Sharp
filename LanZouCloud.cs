@@ -1042,7 +1042,7 @@ namespace LanZouCloudAPI
             }
 
             // 只请求头
-            var _con_len = (await _get_headers(file_info.durl))?.ContentLength;
+            var _con_len = (await _get_content_length(file_info.durl));
 
             // 对于 txt 文件, 可能出现没有 Content-Length 的情况
             // 此时文件需要下载一次才会出现 Content-Length
@@ -1070,7 +1070,7 @@ namespace LanZouCloudAPI
                                     await _stream.ReadAsync(_buffer, 0, 1, cancellationToken);
 
                                     // 再请求一次试试，只请求头
-                                    _con_len = (await _get_headers(file_info.durl))?.ContentLength;
+                                    _con_len = (await _get_content_length(file_info.durl));
                                     Log($"Retry to get Content-Length: {_con_len}", LogLevel.Info, nameof(DownloadFileByUrl));
                                 }
                             }
