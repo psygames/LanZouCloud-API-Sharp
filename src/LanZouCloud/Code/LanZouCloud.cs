@@ -1,4 +1,4 @@
-﻿using LitJson;
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -871,7 +871,7 @@ namespace LanZouCloudAPI
             {
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"上传超过最大文件大小({_max_size}MB): {file_path}", filename, file_path);
             }
-            else if (!is_name_valid(filename))
+            else if (!is_ext_valid(filename))
             {
                 // 不允许上传的格式
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"文件后缀名不符合官方限制: {file_path}", filename, file_path);

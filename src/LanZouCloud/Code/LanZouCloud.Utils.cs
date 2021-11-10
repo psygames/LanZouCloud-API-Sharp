@@ -203,11 +203,14 @@ namespace LanZouCloudAPI
         }
 
 
-        private static readonly HashSet<string> valid_suffix_list = new HashSet<string>()
+        /// <summary>
+        /// 允许上传的文件后缀名
+        /// </summary>
+        public static readonly List<string> valid_suffix_list = new List<string>()
         {
             "ppt", "xapk", "ke", "azw", "cpk", "gho", "dwg", "db", "docx", "deb", "e", "ttf", "xls", "bat",
             "crx", "rpm", "txf", "pdf", "apk", "ipa", "txt", "mobi", "osk", "dmg", "rp", "osz", "jar",
-            "ttc", "z", "w3x", "xlsx", "cetrainer", "ct", "rar", "mp3", "pptx", "mobileconfig", "epub",
+            "ttc", "z", "w3x", "xlsx", "ct", "rar", "mp3", "pptx", "mobileconfig", "epub",
             "imazingapp", "doc", "iso", "img", "appimage", "7z", "rplib", "lolgezi", "exe", "azw3", "zip",
             "conf", "tar", "dll", "flac", "xpa", "lua", "cad", "hwt", "accdb", "ce",
             "xmind", "enc", "bds", "bdi", "ssf", "it", "gz"
@@ -218,7 +221,7 @@ namespace LanZouCloudAPI
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        private bool is_name_valid(string filename)
+        private bool is_ext_valid(string filename)
         {
             var ext = Path.GetExtension(filename).Substring(1);
             return valid_suffix_list.Contains(ext);
