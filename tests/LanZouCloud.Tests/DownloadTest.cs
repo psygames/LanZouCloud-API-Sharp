@@ -24,7 +24,7 @@ namespace Test
 
             var fileId = await AConfig.GetTestFile(cloud);
 
-            var info = await cloud.DownloadFile(fileId, "./", true,
+            var info = await cloud.DownloadFile(fileId, "./", null, true,
                 new Progress<ProgressInfo>(_progress =>
                 {
                     if (_progress.state == ProgressState.Start)
@@ -57,7 +57,7 @@ namespace Test
 
             var fileId = await AConfig.GetTestFileBig(cloud);
 
-            var info = await cloud.DownloadFile(fileId, "./", true);
+            var info = await cloud.DownloadFile(fileId, "./", null, true);
 
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
         }
@@ -79,7 +79,7 @@ namespace Test
                 cts.Cancel();
             }).Start();
 
-            var info = await cloud.DownloadFile(fileId, "./", true, null, cts.Token);
+            var info = await cloud.DownloadFile(fileId, "./", null, true, null, cts.Token);
 
             Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
         }
@@ -94,7 +94,8 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
             var url = "https://psyduck.lanzoui.com/ibf1Xvlo4rc";
-            var info = await cloud.DownloadFileByUrl(url, "./", "", true,
+            // var url = "https://psyduck.lanzoui.com/idyVcwcu06f";
+            var info = await cloud.DownloadFileByUrl(url, "./", null, "95w3", true,
                 new Progress<ProgressInfo>(_progress =>
                 {
                     if (_progress.state == ProgressState.Start)
@@ -128,7 +129,7 @@ namespace Test
             bool isDownloadingOK = false;
             bool isFinishOK = false;
             var url = "https://psyduck.lanzoui.com/iDCSnvmho6f";
-            var info = await cloud.DownloadFileByUrl(url, "./", "", true,
+            var info = await cloud.DownloadFileByUrl(url, "./", null, null, true,
                 new Progress<ProgressInfo>(_progress =>
                 {
                     if (_progress.state == ProgressState.Start)

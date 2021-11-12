@@ -63,7 +63,7 @@ namespace Test
         public async Task UploadFileBig()
         {
             var cloud = await AConfig.AsyncLoginCloud();
-            var info = await cloud.UploadFile(AConfig.TestFileBigPath);
+            var info = await cloud.UploadFile(AConfig.TestFileBigPath, null, -1, true);
             Assert.IsTrue(info.code == LanZouCode.SUCCESS);
         }
     }

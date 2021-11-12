@@ -11,13 +11,13 @@ namespace Test
         [TestMethod]
         public async Task Login()
         {
-            await AConfig.AsyncLoginCloud();
+            await AConfig.AsyncLoginCloud(true);
         }
 
         [TestMethod]
         public async Task Logout()
         {
-            var cloud = await AConfig.AsyncLoginCloud();
+            var cloud = await AConfig.AsyncLoginCloud(true);
             var result = await cloud.Logout();
             Assert.IsTrue(result.code == LanZouCode.SUCCESS);
         }
@@ -61,6 +61,16 @@ namespace Test
 
             Assert.IsTrue(folderList.folders.Count > 0);
             var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 1, 2);
+            Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
+        }
+
+        [TestMethod]
+        public async Task GetFolderInfoByUrl()
+        {
+            var cloud = AConfig.Cloud();
+            var url = "https://psyduck.lanzoui.com/b00tthepa";
+            var folderInfo = await cloud.GetFolderInfoByUrl(url);
             Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
         }

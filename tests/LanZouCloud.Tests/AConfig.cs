@@ -26,12 +26,12 @@ namespace Test
             return cloud;
         }
 
-        public static async Task<LanZouCloud> AsyncLoginCloud()
+        public static async Task<LanZouCloud> AsyncLoginCloud(bool validate = false)
         {
             var cloud = new LanZouCloud();
             cloud.SetLogLevel(LanZouCloud.LogLevel.Info);
             string[] cookies = File.ReadAllText(cookieFilePath).Split(',');
-            var login = await cloud.Login(cookies[0], cookies[1]);
+            var login = await cloud.Login(cookies[0], cookies[1], validate);
             Assert.IsTrue(login.code == LanZouCode.SUCCESS);
             return cloud;
         }
