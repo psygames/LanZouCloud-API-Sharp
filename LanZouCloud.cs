@@ -1,4 +1,4 @@
-﻿using LitJson;
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -128,10 +128,11 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 通过cookie登录，在浏览器中获得网站的Cookie。
         /// </summary>
-        /// <param name="ylogin">woozooo.com -> Cookie -> ylogin</param>
-        /// <param name="phpdisk_info">pc.woozooo.com -> Cookie -> phpdisk_info</param>
+        /// <param name="ylogin">Cookie位置: woozooo.com -> Cookie -> ylogin</param>
+        /// <param name="phpdisk_info">Cookie位置: pc.woozooo.com -> Cookie -> phpdisk_info</param>
+        /// <param name="validate">是否验证 cookie 有效性</param>
         /// <returns></returns>
-        public async Task<Result> Login(string ylogin, string phpdisk_info)
+        public async Task<Result> Login(string ylogin, string phpdisk_info, bool validate = true)
         {
             var print_pinfo = !string.IsNullOrEmpty(phpdisk_info) && phpdisk_info.Length > 10
                                 ? phpdisk_info.Substring(0, 10) + "..."
@@ -142,19 +143,27 @@ namespace LanZouCloudAPI
             Result result;
             _set_cookie("woozooo.com", "ylogin", ylogin);
             _set_cookie("pc.woozooo.com", "phpdisk_info", phpdisk_info);
-            var html = await _get_text(_account_url);
 
-            if (string.IsNullOrEmpty(html))
+            if (!validate)
             {
-                result = _get_result(html);
-            }
-            else if (html.Contains("网盘用户登录"))
-            {
-                result = new Result(LanZouCode.FAILED, "登录失败，Cookie已过期或不存在。");
+                result = new Result(LanZouCode.SUCCESS, _success_msg);
             }
             else
             {
-                result = new Result(LanZouCode.SUCCESS, _success_msg);
+                var html = await _get_text(_account_url);
+
+                if (string.IsNullOrEmpty(html))
+                {
+                    result = _get_result(html);
+                }
+                else if (html.Contains("网盘用户登录"))
+                {
+                    result = new Result(LanZouCode.FAILED, "登录失败，Cookie已过期或不存在。");
+                }
+                else
+                {
+                    result = new Result(LanZouCode.SUCCESS, _success_msg);
+                }
             }
 
             LogResult(result, nameof(Login));
@@ -162,7 +171,7 @@ namespace LanZouCloudAPI
         }
 
         /// <summary>
-        /// 注销
+        /// 登出
         /// </summary>
         /// <returns></returns>
         public async Task<Result> Logout()
@@ -192,8 +201,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 把文件放到回收站
         /// </summary>
-        /// <param name="file_id"></param>
-        /// <param name="is_file"></param>
+        /// <param name="file_id">文件ID</param>
         /// <returns></returns>
         public async Task<Result> DeleteFile(long file_id)
         {
@@ -375,7 +383,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 获取文件提取码、分享链接
         /// </summary>
-        /// <param name="file_id"></param>
+        /// <param name="file_id">文件ID</param>
         /// <returns></returns>
         public async Task<ShareInfo> GetFileShareInfo(long file_id)
         {
@@ -432,7 +440,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 获取文件夹提取码、分享链接
         /// </summary>
-        /// <param name="folder_id"></param>
+        /// <param name="folder_id">文件夹ID</param>
         /// <returns></returns>
         public async Task<ShareInfo> GetFolderShareInfo(long folder_id)
         {
@@ -478,11 +486,10 @@ namespace LanZouCloudAPI
         /// <para>id 无效或者 id 类型不对应仍然返回成功 :(</para>
         /// <para>文件提取码 2 - 6 位</para>
         /// </summary>
-        /// <param name="file_id"></param>
-        /// <param name="pwd"></param>
-        /// <param name="is_file"></param>
+        /// <param name="file_id">文件ID</param>
+        /// <param name="pwd">提取码</param>
         /// <returns></returns>
-        public async Task<Result> SetFilePassword(long file_id, string pwd = "")
+        public async Task<Result> SetFilePassword(long file_id, string pwd = null)
         {
             LogInfo($"Set file password of file id: {file_id}", nameof(SetFilePassword));
 
@@ -500,11 +507,10 @@ namespace LanZouCloudAPI
         /// <para>id 无效或者 id 类型不对应仍然返回成功 :(</para>
         /// <para>文件夹提取码长度 0 - 12 位</para>
         /// </summary>
-        /// <param name="folder_id"></param>
-        /// <param name="pwd"></param>
-        /// <param name="is_file"></param>
+        /// <param name="folder_id">文件夹ID</param>
+        /// <param name="pwd">提取码</param>
         /// <returns></returns>
-        public async Task<Result> SetFolderPassword(long folder_id, string pwd = "")
+        public async Task<Result> SetFolderPassword(long folder_id, string pwd = null)
         {
             LogInfo($"Set folder password of folder id: {folder_id}", nameof(SetFolderPassword));
 
@@ -520,9 +526,9 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 创建文件夹(同时设置描述)
         /// </summary>
-        /// <param name="folder_name"></param>
-        /// <param name="parent_id"></param>
-        /// <param name="description"></param>
+        /// <param name="folder_name">文件夹名</param>
+        /// <param name="parent_id">父级文件夹ID</param>
+        /// <param name="description">文件夹描述（可空）</param>
         /// <returns></returns>
         public async Task<CreateFolderInfo> CreateFolder(string folder_name, long parent_id = -1, string description = "")
         {
@@ -595,7 +601,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 设置文件描述
         /// </summary>
-        /// <param name="file_id"></param>
+        /// <param name="file_id">文件ID</param>
         /// <param name="description">文件描述（一旦设置了值，就不能再设置为空）</param>
         /// <returns></returns>
         public async Task<Result> SetFileDescription(long file_id, string description = "")
@@ -614,7 +620,7 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 设置文件夹描述
         /// </summary>
-        /// <param name="folder_id"></param>
+        /// <param name="folder_id">文件夹ID</param>
         /// <param name="description">文件夹描述（可以置空）</param>
         /// <returns></returns>
         public async Task<Result> SetFolderDescription(long folder_id, string description = "")
@@ -639,8 +645,8 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 允许会员重命名文件(无法修后缀名)
         /// </summary>
-        /// <param name="file_id"></param>
-        /// <param name="filename"></param>
+        /// <param name="file_id">文件ID</param>
+        /// <param name="filename">文件名</param>
         /// <returns></returns>
         public async Task<Result> RenameFile(long file_id, string filename)
         {
@@ -658,8 +664,8 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 重命名文件夹
         /// </summary>
-        /// <param name="folder_id"></param>
-        /// <param name="folder_name"></param>
+        /// <param name="folder_id">文件夹ID</param>
+        /// <param name="folder_name">文件夹名称</param>
         /// <returns></returns>
         public async Task<Result> RenameFolder(long folder_id, string folder_name)
         {
@@ -807,12 +813,13 @@ namespace LanZouCloudAPI
         /// <summary>
         /// 登录用户通过id下载文件(无需提取码)
         /// </summary>
-        /// <param name="file_id"></param>
-        /// <param name="save_dir"></param>
-        /// <param name="overwrite"></param>
-        /// <param name="progress"></param>
+        /// <param name="file_id">文件ID</param>
+        /// <param name="save_dir">保存到本地文件夹路径</param>
+        /// <param name="custom_filename">自定义文件名</param>
+        /// <param name="overwrite">文件已存在时是否强制覆盖</param>
+        /// <param name="progress">进度</param>
         /// <returns></returns>
-        public async Task<DownloadInfo> DownloadFile(long file_id, string save_dir,
+        public async Task<DownloadInfo> DownloadFile(long file_id, string save_dir, string custom_filename = null,
             bool overwrite = false, IProgress<ProgressInfo> progress = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -829,7 +836,7 @@ namespace LanZouCloudAPI
             }
             else
             {
-                result = await DownloadFileByUrl(share.url, save_dir, share.password, overwrite, progress, cancellationToken);
+                result = await DownloadFileByUrl(share.url, save_dir, custom_filename, share.password, overwrite, progress, cancellationToken);
             }
 
             LogResult(result, nameof(DownloadFile));
@@ -837,12 +844,13 @@ namespace LanZouCloudAPI
         }
 
         /// <summary>
-        /// 上传不超过 max_size 的文件
+        /// 上传不超过 100MB 的文件
         /// </summary>
-        /// <param name="file_path"></param>
-        /// <param name="folder_id"></param>
-        /// <param name="overwrite"></param>
-        /// <param name="progress"></param>
+        /// <param name="file_path">文件路径</param>
+        /// <param name="custom_filename">自定义上传文件名</param>
+        /// <param name="folder_id">上传至文件夹ID</param>
+        /// <param name="overwrite">是否覆盖云端已存在的同名文件</param>
+        /// <param name="progress">进度</param>
         public async Task<UploadInfo> UploadFile(string file_path, string custom_filename = null, long folder_id = -1, bool overwrite = false,
             IProgress<ProgressInfo> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -871,7 +879,7 @@ namespace LanZouCloudAPI
             {
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"上传超过最大文件大小({_max_size}MB): {file_path}", filename, file_path);
             }
-            else if (!is_name_valid(filename))
+            else if (!is_ext_valid(filename))
             {
                 // 不允许上传的格式
                 result = new UploadInfo(LanZouCode.OFFICIAL_LIMITED, $"文件后缀名不符合官方限制: {file_path}", filename, file_path);
@@ -1009,14 +1017,15 @@ namespace LanZouCloudAPI
         /// <para>通过分享链接，下载文件(需提取码)</para>
         /// <para>此接口无需登录</para>
         /// </summary>
-        /// <param name="share_url"></param>
-        /// <param name="save_dir"></param>
-        /// <param name="pwd"></param>
+        /// <param name="share_url">分享链接</param>
+        /// <param name="save_dir">保存至本地的文件夹路径</param>
+        /// <param name="custom_filename">自定义文件名</param>
+        /// <param name="pwd">提取码</param>
         /// <param name="overwrite">文件已存在时是否强制覆盖</param>
         /// <param name="progress">用于显示下载进度</param>
         /// <returns></returns>
-        public async Task<DownloadInfo> DownloadFileByUrl(string share_url, string save_dir,
-            string pwd = "", bool overwrite = false, IProgress<ProgressInfo> progress = null,
+        public async Task<DownloadInfo> DownloadFileByUrl(string share_url, string save_dir, string custom_filename = null,
+            string pwd = null, bool overwrite = false, IProgress<ProgressInfo> progress = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             save_dir = Path.GetFullPath(save_dir);
@@ -1257,7 +1266,7 @@ namespace LanZouCloudAPI
         /// <param name="share_url">文件分享链接</param>
         /// <param name="pwd">文件提取码(如果有的话)</param>
         /// <returns></returns>
-        public async Task<CloudFileInfo> GetFileInfoByUrl(string share_url, string pwd = "")
+        public async Task<CloudFileInfo> GetFileInfoByUrl(string share_url, string pwd = null)
         {
             LogInfo($"Get file info of url: {share_url}", nameof(GetFileInfoByUrl));
 
@@ -1490,12 +1499,13 @@ namespace LanZouCloudAPI
         /// <param name="page_begin">开始页码，默认值 1 为起始页</param>
         /// <param name="page_count">获取页数，默认值 -1 表示所有</param>
         /// <returns></returns>
-        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = "", int page_begin = 1, int page_count = -1)
+        public async Task<CloudFolderInfo> GetFolderInfoByUrl(string share_url, string pwd = null, int page_begin = 1, int page_count = -1)
         {
             LogInfo($"Get folder info of url: {share_url}, begin page : {page_begin}, count: {page_count}", nameof(GetFolderInfoByUrl));
 
             CloudFolderInfo result = null;
 
+            // TODO: Invalid url
             if (await is_share_url(share_url))
             {
                 result = new CloudFolderInfo(LanZouCode.URL_INVALID, $"Invalid url: {share_url}");
