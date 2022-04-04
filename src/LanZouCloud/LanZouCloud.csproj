@@ -8,4 +8,9 @@
     <PackageReference Include="LitJson" Version="0.17.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Refactor\Module\" />
+    <Folder Include="Refactor\API\" />
+  </ItemGroup>
+
 </Project>

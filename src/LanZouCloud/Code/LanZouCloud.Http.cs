@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -93,7 +93,7 @@ namespace LanZouCloudAPI
                     {
                         using (var content = new FormUrlEncodedContent(data))
                         {
-                            using (var resp = await client.PostAsync(url, content))
+                            using (var resp = await  .PostAsync(url, content))
                             {
                                 resp.EnsureSuccessStatusCode();
                                 text = await resp.Content.ReadAsStringAsync();
