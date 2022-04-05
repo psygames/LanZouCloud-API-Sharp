@@ -1,4 +1,4 @@
-using LitJson;
+﻿using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -27,7 +27,7 @@ namespace LanZou
         /// </summary>
         /// <param name="share_url"></param>
         /// <returns></returns>
-        private static bool is_share_url(string share_url)
+        internal static bool is_share_url(string share_url)
         {
             var user_pat = "https?://[a-zA-Z0-9-]*?\\.?lanzou\\w.com/i[a-zA-Z0-9]{5,}/?";  // 普通用户 URL 规则
             return Regex.IsMatch(share_url, user_pat);
@@ -62,7 +62,7 @@ namespace LanZou
             return res;
         }
 
-        private  static string hex_xor(string str_arg, string args)
+        private static string hex_xor(string str_arg, string args)
         {
             var res = "";
             for (int idx = 0; idx < Math.Min(str_arg.Length, args.Length); idx += 2)
@@ -102,24 +102,24 @@ namespace LanZou
         /// 去除非法字符
         /// </summary>
         /// <param name="name"></param>
-        private static string name_format(string name)
+        internal static string name_format(string name)
         {
             // 去除其它字符集的空白符,去除重复空白字符
             name = name.Replace("\xa0", " ").Replace("\u3000", " ").Replace("  ", " ");
             return Regex.Replace(name, "[$%^!*<>)(+=`'\"/:;,?]", "");
         }
 
-        private static readonly string _network_error_msg = "Network error, please retry later";
-        private static readonly string _not_login_msg = "You are not login, please login and retry";
-        private static readonly string _task_canceled_msg = "Task was canceled";
-        private static readonly string _success_msg = "Success";
+        public static readonly string _network_error_msg = "Network error, please retry later";
+        public static readonly string _not_login_msg = "You are not login, please login and retry";
+        public static readonly string _task_canceled_msg = "Task was canceled";
+        public static readonly string _success_msg = "Success";
 
         /// <summary>
         /// 从返回JSON中获得 结果
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        private static Result _get_result(string text)
+        internal static Result _get_result(string text)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -144,7 +144,7 @@ namespace LanZou
         /// </summary>
         /// <param name="key_vals"></param>
         /// <returns></returns>
-        private static Dictionary<string, string> _post_data(params string[] key_vals)
+        internal static Dictionary<string, string> _post_data(params string[] key_vals)
         {
             if (key_vals == null || key_vals.Length % 2 != 0)
                 throw new ArgumentException("参数数量不匹配!");
@@ -161,7 +161,7 @@ namespace LanZou
         /// </summary>
         /// <param name="file_path"></param>
         /// <returns></returns>
-        private static string _auto_rename(string file_path)
+        internal static string _auto_rename(string file_path)
         {
             if (!File.Exists(file_path))
                 return file_path;
@@ -205,7 +205,7 @@ namespace LanZou
         /// </summary>
         /// <param name="filename"></param>
         /// <returns></returns>
-        private static bool is_ext_valid(string filename)
+        internal static bool is_ext_valid(string filename)
         {
             var ext = Path.GetExtension(filename).Substring(1);
             return valid_suffix_list.Contains(ext);

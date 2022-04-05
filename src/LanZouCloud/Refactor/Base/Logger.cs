@@ -2,16 +2,16 @@
 
 namespace LanZou
 {
+    public enum LogLevel
+    {
+        None = 0,
+        Error = 1,
+        Warning = 2,
+        Info = 3,
+    }
+
     public class Logger
     {
-        public enum LogLevel
-        {
-            None = 0,
-            Error = 1,
-            Warning = 2,
-            Info = 3,
-        }
-
         private LogLevel _print_log_level = LogLevel.Error;
         private LogLevel _write_log_level = LogLevel.None;
 
@@ -36,24 +36,7 @@ namespace LanZou
             this._write_log_level = writeLevel;
         }
 
-        private void LogInfo(string msg, string module)
-        {
-            Log(msg, LogLevel.Info, module);
-        }
-
-        private void LogResult(Result result, string module)
-        {
-            if (result.code != LanZouCode.SUCCESS)
-            {
-                Log(result.message, LogLevel.Error, module);
-            }
-            else
-            {
-                Log(result.message, LogLevel.Info, module);
-            }
-        }
-
-        private void Log(object log, LogLevel level, string module)
+        public void Log(object log, LogLevel level, string module = null)
         {
             if (level == LogLevel.None)
             {
@@ -72,10 +55,17 @@ namespace LanZou
             var time = DateTime.Now.ToString("HH:mm:ss.fff");
             var _level = level.ToString().Substring(0, 1);
             var _max_module_lens = 16;
-            if (module.Length > _max_module_lens) module = module.Substring(0, _max_module_lens);
-            else if (module.Length < _max_module_lens) module = module + new string(' ', _max_module_lens - module.Length);
-            var _log = $"{time}|LanZou|{_level}|{module}|{log}";
+            if (module != null)
+            {
+                if (module.Length > _max_module_lens) module = module.Substring(0, _max_module_lens);
+                else if (module.Length < _max_module_lens) module = module + new string(' ', _max_module_lens - module.Length);
+            }
+            else
+            {
+                module = "module";
+            }
 
+            var _log = $"{time}|LanZou|{_level}|{module}|{log}";
             if (_print_log_level >= level)
             {
                 Print(_log, level);
