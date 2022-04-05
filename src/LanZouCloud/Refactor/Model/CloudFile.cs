@@ -1,4 +1,4 @@
-﻿namespace LanZou.Model
+﻿namespace LanZou
 {
     public class CloudFile : JsonStringObject
     {

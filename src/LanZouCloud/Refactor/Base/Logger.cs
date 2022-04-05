@@ -41,7 +41,7 @@ namespace LanZou
             Log(msg, LogLevel.Info, module);
         }
 
-        private void LogResult(LanZou.Result.Result result, string module)
+        private void LogResult(Result result, string module)
         {
             if (result.code != LanZouCode.SUCCESS)
             {

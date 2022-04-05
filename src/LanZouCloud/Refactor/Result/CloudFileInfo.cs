@@ -1,7 +1,7 @@
-﻿using LanZou.Model;
+﻿using LanZou;
 using System.Collections.Generic;
 
-namespace LanZou.Result
+namespace LanZou
 {
     /// <summary>
     /// 文件分享页信息

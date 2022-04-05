@@ -1,4 +1,4 @@
-﻿namespace LanZou.Result
+﻿namespace LanZou
 {
     /// <summary>
     /// 上传/下载 进度信息

@@ -1,4 +1,4 @@
-﻿namespace LanZou.Model
+﻿namespace LanZou
 {
     /// <summary>
     /// 专为 CloudFolderInfo 使用，指其下子文件

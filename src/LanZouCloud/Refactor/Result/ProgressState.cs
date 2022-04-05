@@ -1,4 +1,4 @@
-﻿namespace LanZou.Result
+﻿namespace LanZou
 {
     public enum ProgressState
     {

@@ -1,4 +1,4 @@
-﻿namespace LanZou.Result
+﻿namespace LanZou
 {
     /// <summary>
     /// 蓝奏云返回结果信息

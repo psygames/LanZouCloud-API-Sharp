@@ -1,7 +1,7 @@
-﻿using LanZou.Model;
+﻿using LanZou;
 using System.Collections.Generic;
 
-namespace LanZou.Result
+namespace LanZou
 {
     public class DownloadInfo : Result
     {

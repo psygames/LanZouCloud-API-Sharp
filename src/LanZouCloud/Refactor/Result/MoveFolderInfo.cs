@@ -1,7 +1,7 @@
-﻿using LanZou.Model;
+﻿using LanZou;
 using System.Collections.Generic;
 
-namespace LanZou.Result
+namespace LanZou
 {
     /// <summary>
     /// 移动文件夹返回结果

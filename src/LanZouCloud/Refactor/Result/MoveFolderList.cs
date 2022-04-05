@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace LanZou.Result
+namespace LanZou
 {
     internal class MoveFolderList : Result
     {
