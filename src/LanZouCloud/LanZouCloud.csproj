@@ -9,8 +9,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Refactor\Module\" />
-    <Folder Include="Refactor\API\" />
+    <Folder Include="Base\" />
+    <Folder Include="Model\" />
+    <Folder Include="Module\" />
+    <Folder Include="Result\" />
+    <Folder Include="Utils\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Base\" />
+    <None Remove="Model\" />
+    <None Remove="Module\" />
+    <None Remove="Result\" />
+    <None Remove="Utils\" />
+  </ItemGroup>
 </Project>

@@ -13,7 +13,7 @@ namespace LanZou
         /// </summary>
         /// <param name="html"></param>
         /// <returns></returns>
-        private static string remove_notes(string html)
+        public static string remove_notes(string html)
         {
             // 去掉 html 里面的 // 和 <!-- --> 注释，防止干扰正则匹配提取数据
             // 蓝奏云的前端程序员喜欢改完代码就把原来的代码注释掉,就直接推到生产环境了 =_=
@@ -33,7 +33,7 @@ namespace LanZou
             return Regex.IsMatch(share_url, user_pat);
         }
 
-        private static string calc_acw_sc__v2(string html_text)
+        public static string calc_acw_sc__v2(string html_text)
         {
             var arg1 = Regex.Match(html_text, "arg1='([0-9A-Z]+)'");
             var arg1str = "";
@@ -82,7 +82,7 @@ namespace LanZou
         /// </summary>
         /// <param name="time_str"></param>
         /// <returns></returns>
-        private static string time_format(string time_str)
+        public static string time_format(string time_str)
         {
             //if '秒前' in time_str or '分钟前' in time_str or '小时前' in time_str:
             //        return datetime.today().strftime('%Y-%m-%d')

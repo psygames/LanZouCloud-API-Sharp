@@ -11,7 +11,7 @@ namespace LanZou
 {
     public class Http
     {
-        private int retries = 3;
+        public int retries = 3;
         private float timeout = 5;
         private string proxy = null;
         private Dictionary<string, string> headers = null;
@@ -21,13 +21,13 @@ namespace LanZou
 
 
 
-        private void _set_cookie(string domain, string name, string value)
+        public void _set_cookie(string domain, string name, string value)
         {
             cookieContainer.Add(new Cookie(name, value, null, domain));
         }
 
         // 需要自己处理超时重试 ！！！
-        private HttpClient _get_client(Dictionary<string, string> headers = null,
+        public HttpClient _get_client(Dictionary<string, string> headers = null,
             float timeout = 0, bool allowRedirect = true, string proxy = null)
         {
             var handler = new HttpClientHandler();
@@ -61,7 +61,7 @@ namespace LanZou
         }
 
         #region 网络超时，自动重试
-        private async Task<string> _get_text(string url)
+        public async Task<string> _get_text(string url)
         {
             url = fix_url_domain(url);
             string text = null;
@@ -118,7 +118,7 @@ namespace LanZou
             return text;
         }
 
-        private async Task<long?> _get_content_length(string url)
+        public async Task<long?> _get_content_length(string url)
         {
             url = fix_url_domain(url);
             long? content_length = null;
