@@ -1,10 +1,6 @@
-using LanZou;
+﻿using LanZou;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Test
@@ -22,14 +18,12 @@ namespace Test
         public static LanZouCloud Cloud()
         {
             var cloud = new LanZouCloud();
-            cloud.logger.SetLogLevel(LogLevel.Info);
             return cloud;
         }
 
         public static async Task<LanZouCloud> AsyncLoginCloud(bool validate = false)
         {
             var cloud = new LanZouCloud();
-            cloud.logger.SetLogLevel(LogLevel.Info);
             string[] cookies = File.ReadAllText(cookieFilePath).Split(',');
             var login = await cloud.Login(cookies[0], cookies[1], validate);
             Assert.IsTrue(login.code == LanZouCode.SUCCESS);

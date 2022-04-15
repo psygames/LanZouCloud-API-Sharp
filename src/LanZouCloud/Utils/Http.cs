@@ -16,10 +16,7 @@ namespace LanZou
         private string proxy = null;
         private Dictionary<string, string> headers = null;
 
-        private Logger logger = new Logger();
         private CookieContainer cookieContainer = new CookieContainer();
-
-
 
         public void _set_cookie(string domain, string name, string value)
         {
@@ -81,8 +78,8 @@ namespace LanZou
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_text));
-                    if (i < retries) logger.Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_text));
+                    Log.Error($"Http Error: {ex.Message}", nameof(_get_text));
+                    if (i < retries) Log.Info($"Retry({i + 1}): {url}", nameof(_get_text));
                 }
             }
             return text;
@@ -111,8 +108,8 @@ namespace LanZou
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_post_text));
-                    if (i < retries) logger.Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_post_text));
+                    Log.Error($"Http Error: {ex.Message}", nameof(_post_text));
+                    if (i < retries) Log.Info($"Retry({i + 1}): {url}", nameof(_post_text));
                 }
             }
             return text;
@@ -139,8 +136,8 @@ namespace LanZou
                 }
                 catch (Exception ex)
                 {
-                    logger.Log($"Http Error: {ex.Message}", LogLevel.Error, nameof(_get_content_length));
-                    if (i < retries) logger.Log($"Retry({i + 1}): {url}", LogLevel.Info, nameof(_get_content_length));
+                    Log.Error($"Http Error: {ex.Message}", nameof(_get_content_length));
+                    if (i < retries) Log.Info($"Retry({i + 1}): {url}", nameof(_get_content_length));
                 }
             }
             return content_length;

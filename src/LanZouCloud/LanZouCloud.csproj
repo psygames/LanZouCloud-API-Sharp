@@ -9,7 +9,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Base\" />
     <Folder Include="Model\" />
     <Folder Include="Module\" />
     <Folder Include="Result\" />
