@@ -123,20 +123,20 @@ namespace LanZou
         {
             if (string.IsNullOrEmpty(text))
             {
-                return new Result(LanZouCode.NETWORK_ERROR, _network_error_msg);
+                return new Result(ResultCode.NETWORK_ERROR, _network_error_msg);
             }
             if (text.Contains("info\":\"login not"))
             {
-                return new Result(LanZouCode.NOT_LOGIN, _not_login_msg);
+                return new Result(ResultCode.NOT_LOGIN, _not_login_msg);
             }
             if (!text.Contains("zt\":1") && !text.Contains("zt\":2"))
             {
                 string _err;
                 if (!text.Contains("info\":\"")) _err = text;
                 else _err = JsonMapper.ToObject(text)["info"].ToString();
-                return new Result(LanZouCode.FAILED, _err);
+                return new Result(ResultCode.FAILED, _err);
             }
-            return new Result(LanZouCode.SUCCESS, _success_msg);
+            return new Result(ResultCode.SUCCESS, _success_msg);
         }
 
         /// <summary>

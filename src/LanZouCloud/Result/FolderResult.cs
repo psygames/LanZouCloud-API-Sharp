@@ -6,7 +6,7 @@ namespace LanZou
     /// <summary>
     /// 文件夹分享页信息，包括子文件（夹）信息
     /// </summary>
-    public class CloudFolderInfo : Result
+    public class FolderResult : Result
     {
         /// <summary>
         /// 文件夹唯一ID
@@ -48,7 +48,7 @@ namespace LanZou
         /// </summary>
         public List<SubFile> files { get; internal set; }
 
-        internal CloudFolderInfo(LanZouCode code, string errorMessage, long id = 0,
+        internal FolderResult(ResultCode code, string errorMessage, long id = 0,
             string name = null, string time = null, string password = null,
             string description = null, string url = null,
             List<SubFolder> folders = null, List<SubFile> files = null)

@@ -6,7 +6,7 @@ namespace LanZou
     /// <summary>
     /// 文件分享页信息
     /// </summary>
-    public class CloudFileInfo : Result
+    public class FileResult : Result
     {
         /// <summary>
         /// 文件名称
@@ -48,7 +48,7 @@ namespace LanZou
         /// </summary>
         public string durl { get; internal set; }
 
-        internal CloudFileInfo(LanZouCode code, string errorMessage, string password = null, string url = null,
+        internal FileResult(ResultCode code, string errorMessage, string password = null, string url = null,
              string name = null, string type = null, string time = null, string size = null,
              string description = null, string durl = null)
         {

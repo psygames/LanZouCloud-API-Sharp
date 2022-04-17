@@ -1,9 +1,6 @@
-﻿using LanZou;
-using System.Collections.Generic;
-
-namespace LanZou
+﻿namespace LanZou
 {
-    public class UploadInfo : Result
+    public class UploadResult : Result
     {
         /// <summary>
         /// 文件名
@@ -25,7 +22,7 @@ namespace LanZou
         /// </summary>
         public string url { get; internal set; }
 
-        internal UploadInfo(LanZouCode code, string errorMessage, string fileName = null,
+        internal UploadResult(ResultCode code, string errorMessage, string fileName = null,
             string filePath = null, long id = 0, string url = null)
         {
             this.code = code;

@@ -1,6 +1,6 @@
 ﻿namespace LanZou
 {
-    public enum LanZouCode
+    public enum ResultCode
     {
         FAILED = -1,
         SUCCESS = 0,

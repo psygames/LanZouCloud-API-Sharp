@@ -3,7 +3,7 @@
     /// <summary>
     /// 专为 CloudFolderInfo 使用，指其下子文件夹
     /// </summary>
-    public class SubFolder : JsonStringObject
+    public class SubFolder : JsonObject
     {
         /// <summary>
         /// 文件夹名

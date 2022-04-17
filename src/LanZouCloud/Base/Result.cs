@@ -3,12 +3,12 @@
     /// <summary>
     /// 蓝奏云返回结果信息
     /// </summary>
-    public class Result : JsonStringObject
+    public class Result : JsonObject
     {
         /// <summary>
         /// 蓝奏云结果码
         /// </summary>
-        public LanZouCode code { get; internal set; }
+        public ResultCode code { get; internal set; }
 
         /// <summary>
         /// 错误消息 或 成功消息
@@ -17,7 +17,7 @@
 
         internal Result() { }
 
-        public Result(LanZouCode code, string errorMessage)
+        public Result(ResultCode code, string errorMessage)
         {
             this.code = code;
             this.message = errorMessage;

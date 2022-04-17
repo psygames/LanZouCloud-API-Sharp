@@ -3,14 +3,14 @@ using System.Collections.Generic;
 
 namespace LanZou
 {
-    public class CloudFolderList : Result
+    public class FolderListResult : Result
     {
         /// <summary>
         /// 文件夹列表
         /// </summary>
         public List<CloudFolder> folders { get; internal set; }
 
-        internal CloudFolderList(LanZouCode code, string errorMessage, List<CloudFolder> folders = null)
+        internal FolderListResult(ResultCode code, string errorMessage, List<CloudFolder> folders = null)
         {
             this.code = code;
             this.message = errorMessage;

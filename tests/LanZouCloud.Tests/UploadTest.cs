@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Threading.Tasks;
 using LanZou;
@@ -33,7 +33,7 @@ namespace Test
                         isFinishOK = true;
                 }));
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));
             Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
             Assert.IsTrue(info.id != 0);
@@ -56,7 +56,7 @@ namespace Test
                     cts.Cancel();
                 }).Start();
             var info = await cloud.UploadFile(AConfig.TestFileBigPath, null, -1, false, null, cts.Token);
-            Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
+            Assert.IsTrue(info.code == ResultCode.TASK_CANCELED);
         }
 
         [TestMethod]
@@ -64,7 +64,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var info = await cloud.UploadFile(AConfig.TestFileBigPath, null, -1, true);
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
         }
     }
 }

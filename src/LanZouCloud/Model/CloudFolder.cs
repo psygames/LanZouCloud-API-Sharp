@@ -1,6 +1,6 @@
 ﻿namespace LanZou
 {
-    public class CloudFolder : JsonStringObject
+    public class CloudFolder : JsonObject
     {
         /// <summary>
         /// 文件夹唯一ID

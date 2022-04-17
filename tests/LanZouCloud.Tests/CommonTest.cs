@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using LanZou;
 using System;
@@ -19,7 +19,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud(true);
             var result = await cloud.Logout();
-            Assert.IsTrue(result.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(result.code == ResultCode.SUCCESS);
         }
 
         [TestMethod]
@@ -27,7 +27,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
             Assert.IsTrue(fileList.files != null);
         }
 
@@ -36,7 +36,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFolderList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
             Assert.IsTrue(fileList.folders != null);
         }
 
@@ -45,10 +45,10 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
 
             var fileInfo = await cloud.GetFileInfo(fileList.files[0].id);
-            Assert.IsTrue(fileInfo.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileInfo.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(fileInfo.durl));
         }
 
@@ -57,11 +57,11 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var folderList = await cloud.GetFolderList();
-            Assert.IsTrue(folderList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(folderList.code == ResultCode.SUCCESS);
 
             Assert.IsTrue(folderList.folders.Count > 0);
             var folderInfo = await cloud.GetFolderInfo(folderList.folders[0].id, 1, 2);
-            Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(folderInfo.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
         }
 
@@ -71,7 +71,7 @@ namespace Test
             var cloud = AConfig.Cloud();
             var url = "https://psyduck.lanzoui.com/b00tthepa";
             var folderInfo = await cloud.GetFolderInfoByUrl(url);
-            Assert.IsTrue(folderInfo.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(folderInfo.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(folderInfo.name));
         }
 
@@ -83,11 +83,11 @@ namespace Test
             var folderId = await AConfig.GetTestFolder(cloud);
 
             var info = await cloud.RenameFolder(folderId, AConfig.TestFolder + "_Rename");
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
 
             // revert
             info = await cloud.RenameFolder(folderId, AConfig.TestFolder);
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
         }
 
 
@@ -100,16 +100,16 @@ namespace Test
 
             var info = await cloud.RenameFile(fileId, AConfig.TestFolder + "_Rename");
 
-            if (info.code == LanZouCode.FAILED && info.message == "此功能仅会员使用，请先开通会员")
+            if (info.code == ResultCode.FAILED && info.message == "此功能仅会员使用，请先开通会员")
             {
                 return;
             }
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
 
             // revert
             info = await cloud.RenameFolder(fileId, AConfig.TestFolder);
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
         }
 
 
@@ -123,15 +123,15 @@ namespace Test
 
             // upload
             var create = await cloud.UploadFile(AConfig.TestFilePath, null, subF);
-            Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(create.code == ResultCode.SUCCESS);
 
             // move
             var info = await cloud.MoveFolder(subF, -1);
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
 
             // delete
             var del = await cloud.DeleteFolder(info.id);
-            Assert.IsTrue(del.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(del.code == ResultCode.SUCCESS);
         }
 
 

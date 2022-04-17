@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Threading.Tasks;
 using LanZou;
@@ -15,7 +15,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
 
             bool isStartOK = false;
             bool isReadyOK = false;
@@ -37,7 +37,7 @@ namespace Test
                         isFinishOK = true;
                 }));
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));
             Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
             Assert.IsTrue(File.Exists(info.filePath));
@@ -53,13 +53,13 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
 
             var fileId = await AConfig.GetTestFileBig(cloud);
 
             var info = await cloud.DownloadFile(fileId, "./", null, true);
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
         }
 
         [TestMethod]
@@ -67,7 +67,7 @@ namespace Test
         {
             var cloud = await AConfig.AsyncLoginCloud();
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
 
             var fileId = await AConfig.GetTestFileBig(cloud);
 
@@ -81,7 +81,7 @@ namespace Test
 
             var info = await cloud.DownloadFile(fileId, "./", null, true, null, cts.Token);
 
-            Assert.IsTrue(info.code == LanZouCode.TASK_CANCELED);
+            Assert.IsTrue(info.code == ResultCode.TASK_CANCELED);
         }
 
         [TestMethod]
@@ -108,7 +108,7 @@ namespace Test
                         isFinishOK = true;
                 }));
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));
             Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
             Assert.IsTrue(File.Exists(info.filePath));
@@ -142,7 +142,7 @@ namespace Test
                         isFinishOK = true;
                 }));
 
-            Assert.IsTrue(info.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(info.code == ResultCode.SUCCESS);
             Assert.IsTrue(!string.IsNullOrEmpty(info.url));
             Assert.IsTrue(!string.IsNullOrEmpty(info.fileName));
             Assert.IsTrue(File.Exists(info.filePath));

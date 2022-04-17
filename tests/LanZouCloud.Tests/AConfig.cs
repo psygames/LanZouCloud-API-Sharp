@@ -26,7 +26,7 @@ namespace Test
             var cloud = new LanZouCloud();
             string[] cookies = File.ReadAllText(cookieFilePath).Split(',');
             var login = await cloud.Login(cookies[0], cookies[1], validate);
-            Assert.IsTrue(login.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(login.code == ResultCode.SUCCESS);
             return cloud;
         }
 
@@ -35,12 +35,12 @@ namespace Test
             name = name ?? TestFolder;
             long folderId = 0;
             var fileList = await cloud.GetFolderList(parent_id);
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
             var folder = fileList.folders.Find(a => a.name == name);
             if (folder == null)
             {
                 var create = await cloud.CreateFolder(name, parent_id);
-                Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+                Assert.IsTrue(create.code == ResultCode.SUCCESS);
                 folderId = create.id;
             }
             else
@@ -64,12 +64,12 @@ namespace Test
         {
             long fileId = 0;
             var fileList = await cloud.GetFileList();
-            Assert.IsTrue(fileList.code == LanZouCode.SUCCESS);
+            Assert.IsTrue(fileList.code == ResultCode.SUCCESS);
             var file = fileList.files.Find(a => a.name == Path.GetFileName(filepath));
             if (file == null)
             {
                 var create = await cloud.UploadFile(filepath);
-                Assert.IsTrue(create.code == LanZouCode.SUCCESS);
+                Assert.IsTrue(create.code == ResultCode.SUCCESS);
                 fileId = create.id;
             }
             else

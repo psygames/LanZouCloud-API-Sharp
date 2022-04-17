@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace LanZou
 {
-    public class DownloadInfo : Result
+    public class DownloadResult : Result
     {
         /// <summary>
         /// 文件名
@@ -30,7 +30,7 @@ namespace LanZou
         /// </summary>
         public bool isContinue { get; internal set; }
 
-        internal DownloadInfo(LanZouCode code, string errorMessage, string url = null,
+        internal DownloadResult(ResultCode code, string errorMessage, string url = null,
             string fileName = null, string filePath = null, bool isContinue = false)
         {
             this.code = code;

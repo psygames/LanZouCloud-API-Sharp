@@ -3,7 +3,7 @@
     /// <summary>
     /// 上传/下载 进度信息
     /// </summary>
-    public class ProgressInfo : JsonStringObject
+    public class ProgressInfo : JsonObject
     {
         /// <summary>
         /// 状态

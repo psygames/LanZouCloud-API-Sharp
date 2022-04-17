@@ -1,6 +1,6 @@
 ﻿namespace LanZou
 {
-    public class CloudFile : JsonStringObject
+    public class CloudFile : JsonObject
     {
         /// <summary>
         /// 文件唯一ID

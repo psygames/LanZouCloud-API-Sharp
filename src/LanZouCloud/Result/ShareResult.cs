@@ -1,12 +1,9 @@
-﻿using LanZou;
-using System.Collections.Generic;
-
-namespace LanZou
+﻿namespace LanZou
 {
     /// <summary>
     /// 分享文件（夹）信息
     /// </summary>
-    public class ShareInfo : Result
+    public class ShareResult : Result
     {
         /// <summary>
         /// 文件（夹）名
@@ -28,7 +25,7 @@ namespace LanZou
         /// </summary>
         public string password { get; internal set; }
 
-        internal ShareInfo(LanZouCode code, string errorMessage,
+        internal ShareResult(ResultCode code, string errorMessage,
             string name = null, string url = null, string description = null,
             string password = null)
         {

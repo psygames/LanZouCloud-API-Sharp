@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace LanZou
 {
     /// <summary>
-    /// 移动文件夹返回结果
+    /// 创建文件夹返回结果
     /// </summary>
-    public class MoveFolderInfo : Result
+    public class CreateFolderResult : Result
     {
         /// <summary>
         /// 文件夹唯一ID
@@ -23,7 +23,7 @@ namespace LanZou
         /// </summary>
         public string description { get; internal set; }
 
-        internal MoveFolderInfo(LanZouCode code, string errorMessage,
+        internal CreateFolderResult(ResultCode code, string errorMessage,
             long id = 0, string name = null, string description = null)
         {
             this.code = code;

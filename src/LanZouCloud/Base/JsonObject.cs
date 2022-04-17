@@ -5,7 +5,7 @@ namespace LanZou
     /// <summary>
     /// 重写ToString，以JSON格式输出
     /// </summary>
-    public class JsonStringObject
+    public class JsonObject
     {
         public override string ToString()
         {
