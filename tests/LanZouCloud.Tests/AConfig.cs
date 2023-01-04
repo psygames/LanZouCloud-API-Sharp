@@ -8,11 +8,9 @@ namespace Test
     public static class AConfig
     {
         public const string TestFolder = "LanZouApiTestFolder";
-
         public const string RootPath = "../../../../../../LanZouTest/";
         public const string TestFilePath = RootPath + "LanZouApiTestFile.txt";
         public const string TestFileBigPath = RootPath + "LanZouApiTestFileBig.w3x";
-        public const string cookieFilePath = RootPath + "cookie.txt";
 
 
         public static LanZouCloud Cloud()
@@ -24,8 +22,7 @@ namespace Test
         public static async Task<LanZouCloud> AsyncLoginCloud(bool validate = false)
         {
             var cloud = new LanZouCloud();
-            string[] cookies = File.ReadAllText(cookieFilePath).Split(',');
-            var login = await cloud.Login(cookies[0], cookies[1], validate);
+            var login = await cloud.Login(Cookies.ylogin, Cookies.phpdisk_info, validate);
             Assert.IsTrue(login.code == ResultCode.SUCCESS);
             return cloud;
         }

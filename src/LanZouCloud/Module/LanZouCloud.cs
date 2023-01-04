@@ -18,13 +18,14 @@ namespace LanZou
         private static readonly string _task_canceled_msg = "Task was canceled";
         private static readonly string _success_msg = "Success";
 
-        public const string _host_url = "https://pan.lanzoui.com";
-        public const string _doupload_url = "https://pc.woozooo.com/doupload.php";
-        public const string _account_url = "https://pc.woozooo.com/account.php";
+        private string _host_url = "https://pan.lanzout.com";
+        private string _doupload_url => "https://pc.woozooo.com/doupload.php?uid=" + ylogin;
+        private string _account_url = "https://pc.woozooo.com/account.php";
 
         private Http http = new Http();
 
         private int _max_size;
+        private string ylogin;
 
         #region Private APIs（内部使用）
         /// <summary>
@@ -149,6 +150,8 @@ namespace LanZou
         /// <returns></returns>
         public async Task<Result> Login(string ylogin, string phpdisk_info, bool validate = true)
         {
+            this.ylogin = ylogin;
+
             var print_pinfo = !string.IsNullOrEmpty(phpdisk_info) && phpdisk_info.Length > 10
                                 ? phpdisk_info.Substring(0, 10) + "..."
                                 : phpdisk_info;
@@ -284,7 +287,7 @@ namespace LanZou
                     {
                         id = long.Parse(f_json["id"].ToString()),                               // 文件ID
                         name = f_json["name_all"].ToString().Replace("&amp;", "&"),             // 文件名
-                        time = Utils.time_format((string)f_json["time"]),                             // 上传时间
+                        time = Utils.time_format((string)f_json["time"]),                       // 上传时间
                         size = f_json["size"].ToString().Replace(",", ""),                      // 文件大小
                         type = Path.GetExtension(f_json["name_all"].ToString()).Substring(1),   // 文件类型
                         downloads = int.Parse(f_json["downs"].ToString()),                      // 下载次数
@@ -1307,6 +1310,7 @@ namespace LanZou
                     result = new FileResult(ResultCode.NETWORK_ERROR, _network_error_msg, pwd, share_url);
                 }
             }
+            File.WriteAllText("first_page.html", first_page);
 
             if (result != null)
             {
@@ -1398,21 +1402,22 @@ namespace LanZou
                 var f_desc_match = Regex.Match(first_page, @"文件描述.+?<br>\n?\s*(.*?)\s*</td>");
                 f_desc = f_desc_match.Success ? f_desc_match.Groups[1].Value : "";
 
-                first_page = await http._get_text(_host_url + para);
-                if (string.IsNullOrEmpty(first_page))
+                var second_page = await http._get_text(_host_url + para);
+                if (string.IsNullOrEmpty(second_page))
                 {
                     result = new FileResult(ResultCode.NETWORK_ERROR, _network_error_msg, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
                     LogResult(result, nameof(GetFileInfoByUrl));
                     return result;
                 }
 
-                first_page = Utils.remove_notes(first_page);
+                second_page = Utils.remove_notes(second_page);
+                File.WriteAllText("iframe_fn.html", second_page);
                 // 一般情况 sign 的值就在 data 里，有时放在变量后面
-                var sign = Regex.Match(first_page, "'sign':(.+?),").Groups[1].Value;
+                var sign = Regex.Match(second_page, "'sign':(.+?),").Groups[1].Value;
                 if (sign.Length < 20)  // 此时 sign 保存在变量里面, 变量名是 sign 匹配的字符
-                    sign = Regex.Match(first_page, $"var {sign}\\s*=\\s*'(.+?)';").Groups[1].Value;
+                    sign = Regex.Match(second_page, $"var {sign}\\s*=\\s*'(.+?)';").Groups[1].Value;
 
-                var post_data = Utils._post_data("action", "downprocess", "sign", $"{sign}", "ves", $"{1}");
+                var post_data = Utils._post_data("action", "downprocess", "signs", "?ctdf", "sign", $"{sign}", "websign", "", "websignkey", "wqtF", "ves", $"{1}");
                 var link_info_str = await http._post_text(_host_url + "/ajaxm.php", post_data);
                 if (string.IsNullOrEmpty(link_info_str))
                 {
@@ -1422,6 +1427,7 @@ namespace LanZou
                 }
 
                 link_info = JsonMapper.ToObject(link_info_str);
+                LogInfo(link_info_str, "JSON");
             }
 
             // 这里开始获取文件直链
@@ -1433,6 +1439,7 @@ namespace LanZou
             }
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
+            LogInfo(fake_url, "THIS");
             string download_page_html = null;
             string redirect_url = null;
 
