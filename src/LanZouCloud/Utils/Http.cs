@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -31,6 +31,8 @@ namespace LanZou
             handler.UseCookies = true;
             handler.AllowAutoRedirect = allowRedirect;
             handler.CookieContainer = cookieContainer;
+            handler.ClientCertificateOptions = ClientCertificateOption.Manual;
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 
             var client = new HttpClient(handler, true);
 
@@ -85,7 +87,7 @@ namespace LanZou
             return text;
         }
 
-        internal async Task<string> _post_text(string url, Dictionary<string, string> data)
+        internal async Task<string> _post_text(string url, Dictionary<string, string> data, Dictionary<string, string> headers = null)
         {
             url = fix_url_domain(url);
             string text = null;
@@ -93,7 +95,7 @@ namespace LanZou
             {
                 try
                 {
-                    using (var client = _get_client())
+                    using (var client = _get_client(headers))
                     {
                         using (var content = new FormUrlEncodedContent(data))
                         {

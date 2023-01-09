@@ -1,4 +1,4 @@
-﻿using LitJson;
+using LitJson;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,7 +18,7 @@ namespace LanZou
         private static readonly string _task_canceled_msg = "Task was canceled";
         private static readonly string _success_msg = "Success";
 
-        private string _host_url = "https://pan.lanzout.com";
+        private string _host_url = "https://pan.lanzoue.com";
         private string _doupload_url => "https://pc.woozooo.com/doupload.php?uid=" + ylogin;
         private string _account_url = "https://pc.woozooo.com/account.php";
 
@@ -1413,12 +1413,14 @@ namespace LanZou
                 second_page = Utils.remove_notes(second_page);
                 File.WriteAllText("iframe_fn.html", second_page);
                 // 一般情况 sign 的值就在 data 里，有时放在变量后面
-                var sign = Regex.Match(second_page, "'sign':(.+?),").Groups[1].Value;
+                var sign = Regex.Match(second_page, "'sign':'(.+?)',").Groups[1].Value;
                 if (sign.Length < 20)  // 此时 sign 保存在变量里面, 变量名是 sign 匹配的字符
                     sign = Regex.Match(second_page, $"var {sign}\\s*=\\s*'(.+?)';").Groups[1].Value;
 
-                var post_data = Utils._post_data("action", "downprocess", "signs", "?ctdf", "sign", $"{sign}", "websign", "", "websignkey", "wqtF", "ves", $"{1}");
-                var link_info_str = await http._post_text(_host_url + "/ajaxm.php", post_data);
+                var post_data = Utils._post_data("action", "downprocess", "signs", "?ctdf", "sign", $"{sign}");
+                var _headers = new Dictionary<string, string>(Settings.headers);
+                _headers["Refer"] = _host_url + para;
+                var link_info_str = await http._post_text(_host_url + "/ajaxm.php", post_data, _headers);
                 if (string.IsNullOrEmpty(link_info_str))
                 {
                     result = new FileResult(ResultCode.NETWORK_ERROR, _network_error_msg, pwd, share_url, f_name, f_type, f_time, f_size, f_desc);
@@ -1427,7 +1429,6 @@ namespace LanZou
                 }
 
                 link_info = JsonMapper.ToObject(link_info_str);
-                LogInfo(link_info_str, "JSON");
             }
 
             // 这里开始获取文件直链
@@ -1439,7 +1440,7 @@ namespace LanZou
             }
 
             var fake_url = link_info["dom"].ToString() + "/file/" + link_info["url"].ToString();  // 假直连，存在流量异常检测
-            LogInfo(fake_url, "THIS");
+            LogInfo($"Fake Url: {fake_url}", nameof(GetFileInfoByUrl));
             string download_page_html = null;
             string redirect_url = null;
 
@@ -1458,6 +1459,7 @@ namespace LanZou
                             else if (resp.StatusCode == HttpStatusCode.Found)
                             {
                                 redirect_url = resp.Headers.Location.AbsoluteUri;// 重定向后的真直链
+                                LogInfo(fake_url, "THAT");
                             }
                             else // 未知网络错误
                             {
@@ -1469,6 +1471,7 @@ namespace LanZou
                             // download_page.encoding = 'utf-8'
                             download_page_html = await resp.Content.ReadAsStringAsync();
                             download_page_html = Utils.remove_notes(download_page_html);
+                            File.WriteAllText("download_page.html", download_page_html);
                         }
                     }
                     break;
@@ -1481,9 +1484,9 @@ namespace LanZou
             }
 
             string direct_url;
-            if (!download_page_html.Contains("网络异常"))  // 没有遇到验证码
+            if (true || !download_page_html.Contains("网络异常"))  // 没有遇到验证码
             {
-                direct_url = redirect_url;
+                direct_url = redirect_url ?? fake_url;
             }
             else // 遇到验证码，验证后才能获取下载直链
             {
